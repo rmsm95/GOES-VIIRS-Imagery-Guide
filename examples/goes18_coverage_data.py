@@ -9,11 +9,13 @@ from urllib.request import urlretrieve
 NOAA_BASE = "https://noaa-goes18.s3.amazonaws.com"
 SCAN_LABELS = {
     "full_disk": "2023-10-03 19:00 UTC",
+    "full_disk_night": "2023-10-03 17:00 UTC",
     "conus": "2023-10-03 19:01 UTC",
     "mesoscale": "2023-10-03 19:00 UTC",
 }
 PRODUCT_PATHS = {
     "full_disk": "ABI-L1b-RadF/2023/276/19",
+    "full_disk_night": "ABI-L1b-RadF/2023/276/17",
     "conus": "ABI-L1b-RadC/2023/276/19",
     "mesoscale": "ABI-L1b-RadM/2023/276/19",
 }
@@ -28,6 +30,14 @@ FILES = {
         "C13": "OR_ABI-L1b-RadF-M6C13_G18_s20232761900206_e20232761909526_c20232761909572.nc",
         "C14": "OR_ABI-L1b-RadF-M6C14_G18_s20232761900206_e20232761909514_c20232761909569.nc",
         "C15": "OR_ABI-L1b-RadF-M6C15_G18_s20232761900206_e20232761909520_c20232761909555.nc",
+    },
+    "full_disk_night": {
+        # 17:00 UTC scan (~06:00 local): Shishaldin is in darkness, so True
+        # Color is black and the day/night blend shows clouds from C13.
+        "C01": "OR_ABI-L1b-RadF-M6C01_G18_s20232761700206_e20232761709514_c20232761709555.nc",
+        "C02": "OR_ABI-L1b-RadF-M6C02_G18_s20232761700206_e20232761709514_c20232761709535.nc",
+        "C03": "OR_ABI-L1b-RadF-M6C03_G18_s20232761700206_e20232761709514_c20232761709560.nc",
+        "C13": "OR_ABI-L1b-RadF-M6C13_G18_s20232761700206_e20232761709525_c20232761709561.nc",
     },
     "conus": {
         "C01": "OR_ABI-L1b-RadC-M6C01_G18_s20232761901171_e20232761903544_c20232761903586.nc",

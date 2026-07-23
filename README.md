@@ -173,6 +173,7 @@ and the exact resulting satellite image together:
 - [VIIRS True Color notebook](notebooks/02_VIIRS_true_color.ipynb)
 - [GOES-18 Ash RGB notebook](notebooks/03_GOES_ash_rgb.ipynb)
 - [GOES-18 SO₂ / Volcanic Emissions RGB notebook](notebooks/04_GOES_so2_rgb.ipynb)
+- [GOES-18 Day/Night True Color notebook](notebooks/05_GOES_day_night.ipynb)
 - [JupyterLab setup and input guide](notebooks/README.md)
 
 Install and start JupyterLab from the repository root:
@@ -182,29 +183,12 @@ python -m pip install -r requirements-notebooks.txt
 python -m jupyter lab
 ```
 
-GitHub displays every saved result without requiring JupyterLab. The Ash and
-SO₂ notebooks use public GOES-18 data from **3 October 2023 at 19:00 UTC**.
-Every GOES notebook shows six generated maps, grouped by source:
-
-1. the complete Full Disk (`RadF`) scan, followed by a user-entered domain
-   centered on Shishaldin;
-2. the complete nearest CONUS (`RadC`) scan, followed by its own editable
-   domain inside the CONUS coverage;
-3. the complete Mesoscale 1 (`RadM1`) sector, followed by its own editable
-   domain inside that operational sector.
-
-The Full Disk and Mesoscale scans started at 19:00 UTC. The nearest CONUS scan
-started at 19:01 UTC. All three domains are explicit decimal
-`MIN_LON, MIN_LAT, MAX_LON, MAX_LAT` values in the notebook's `DOMAINS`
-dictionary.
-
-These are separate NOAA source products, not three labels applied to the same
-crop. The operational Mesoscale 1 sector at this time does not cover
-Shishaldin, and CONUS does not cover Alaska; the notebook intentionally shows
-their actual extents. Only the Full Disk domain can be centered on Shishaldin;
-the other two domain examples remain inside their own source coverages.
-Each notebook keeps its recipe, decimal domain, grid, coastlines, code, and
-exact generated PNGs together.
+GitHub displays every saved result without requiring JupyterLab. Each notebook
+is simple: it produces **one image** over Shishaldin and embeds it, keeping the
+recipe, the named domain, the code, and the exact PNG together. The GOES
+notebooks use public GOES-18 data from **3 October 2023 at 19:00 UTC** (and
+17:00 UTC for the night side of the day/night notebook), cropped to the
+`shishaldin` named domain on the flat WGS84 lon/lat grid.
 
 ## Repository structure
 
@@ -227,7 +211,8 @@ exact generated PNGs together.
 │   ├── 01_GOES_true_color.ipynb
 │   ├── 02_VIIRS_true_color.ipynb
 │   ├── 03_GOES_ash_rgb.ipynb
-│   └── 04_GOES_so2_rgb.ipynb
+│   ├── 04_GOES_so2_rgb.ipynb
+│   └── 05_GOES_day_night.ipynb
 ├── tests/
 │   ├── test_goes18_coverage_data.py
 │   ├── test_notebooks.py
