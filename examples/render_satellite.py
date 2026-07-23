@@ -91,8 +91,9 @@ def add_domain_argument(parser: argparse.ArgumentParser) -> None:
         type=float,
         metavar=("MIN_LON", "MIN_LAT", "MAX_LON", "MAX_LAT"),
         help=(
-            "User-defined crop in longitude/latitude order: "
-            "MIN_LON MIN_LAT MAX_LON MAX_LAT. Omit it to keep the source extent."
+            "User-defined crop in decimal degrees and longitude/latitude order: "
+            "MIN_LON MIN_LAT MAX_LON MAX_LAT (for example, "
+            "-166.0 54.0 -162.0 56.0). Omit it to keep the source extent."
         ),
     )
 

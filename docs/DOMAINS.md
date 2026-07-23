@@ -9,7 +9,8 @@ A crop cannot create data that is absent from the source file.
 
 ## The domain is always user-defined
 
-The code contains no named geographic presets. Enter four longitude/latitude limits:
+The code contains no named geographic presets. Enter four longitude/latitude
+limits in decimal degrees:
 
 ```text
 --domain MIN_LON MIN_LAT MAX_LON MAX_LAT
@@ -18,28 +19,30 @@ The code contains no named geographic presets. Enter four longitude/latitude lim
 The limits must follow these rules:
 
 ```text
--180 <= MIN_LON < MAX_LON <= 180
- -90 <= MIN_LAT < MAX_LAT <= 90
+-180.0 <= MIN_LON < MAX_LON <= 180.0
+ -90.0 <= MIN_LAT < MAX_LAT <= 90.0
 ```
 
-Use negative longitude for locations west of Greenwich and negative latitude for locations south of the equator.
+Use negative longitude for locations west of Greenwich and negative latitude
+for locations south of the equator. Write all four values as decimals, including
+`.0` for whole degrees; half degrees can be written as `.5`.
 
 ### Example around Shishaldin
 
 This is an example box entered directly by the user:
 
 ```bash
---domain -166 54 -162 56
+--domain -166.0 54.0 -162.0 56.0
 ```
 
 It means:
 
 | Argument | Value |
 |---|---:|
-| minimum longitude | `-166` |
-| minimum latitude | `54` |
-| maximum longitude | `-162` |
-| maximum latitude | `56` |
+| minimum longitude | `-166.0` |
+| minimum latitude | `54.0` |
+| maximum longitude | `-162.0` |
+| maximum latitude | `56.0` |
 
 Change the four values to match the exact study area and desired context. The command does not select Shishaldin or any other region automatically.
 
@@ -72,7 +75,7 @@ python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/*.nc" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/goes_shishaldin.png
 ```
 
@@ -87,7 +90,7 @@ python examples/render_satellite.py \
   --sensor viirs \
   --files "data/viirs/*.h5" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/viirs_shishaldin.png
 ```
 
@@ -97,7 +100,7 @@ The crop reduces processing and output image size. It does not reduce bytes alre
 
 - Enter longitude first and latitude second.
 - Enter the minimum corner before the maximum corner.
-- Keep all four values in decimal degrees.
+- Keep all four values in decimal degrees, for example `-166.0` or `-166.5`.
 - Confirm that the box does not cross the antimeridian. A single `MIN_LON < MAX_LON` box cannot cross it.
 - Confirm that all GOES channels come from the same scan.
 - Confirm that VIIRS spectral and geolocation files come from the same granule.
