@@ -1,18 +1,20 @@
-# Visualizar GOES e VIIRS
+# GOES and VIIRS Imagery
 
-Guia prático, em português, para transformar ficheiros NOAA em imagens e composições RGB.
+A practical guide to turning NOAA GOES ABI and JPSS VIIRS files into satellite images and RGB composites.
 
-Este repositório complementa o [GOES & JPSS Data Downloader](https://rmsm95.github.io/GOES-NESDIS_downlaoder/): primeiro pode visualizar GOES no Google Earth Engine, depois descarregar os ficheiros necessários e criar imagens localmente.
+This repository complements the [GOES & JPSS Data Downloader](https://rmsm95.github.io/GOES-NESDIS_downlaoder/). Preview GOES data in Google Earth Engine, download the files you need, and render the imagery locally.
 
-## Começar em 5 minutos
+## Quick start
 
-### 1. Visualizar GOES antes do download
+### 1. Preview GOES before downloading
 
-Abra o [visualizador GOES no Google Earth Engine](https://ruimota16.users.earthengine.app/view/testapp). Permite escolher satélite, domínio, data/hora e produto antes de descarregar os dados.
+Open the [GOES viewer in Google Earth Engine](https://ruimota16.users.earthengine.app/view/testapp). The viewer lets you inspect the satellite, source coverage, date, time, and visualization before downloading large files.
 
-### 2. Preparar o ambiente Python
+The viewer is still being tested and developed.
 
-Requer Python 3.11 ou mais recente.
+### 2. Prepare Python
+
+Python 3.11 or newer is required.
 
 ```bash
 python -m venv .venv
@@ -21,86 +23,101 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-No Windows PowerShell, ative o ambiente com:
+On Windows PowerShell:
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Criar uma imagem GOES True Color
+### 3. Create a GOES True Color image
 
-Descarregue os canais ABI `C01`, `C02` e `C03` da mesma observação. Depois execute:
+Download ABI channels `C01`, `C02`, and `C03` from the same observation. Enter your geographic domain in this exact order:
+
+```text
+MIN_LON MIN_LAT MAX_LON MAX_LAT
+```
+
+The following example uses a user-defined box around Shishaldin:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/*.nc" \
+  --files "data/goes/*.nc" \
   --composite true_color \
-  --domain full-disk \
-  --output output/goes_true_color.png
+  --domain -166 54 -162 56 \
+  --output output/goes_shishaldin_true_color.png
 ```
 
-O GOES ABI não possui um canal verde puro. O verde é sintetizado a partir dos canais azul, vermelho e vegetação.
+These coordinates are only an example entered in the command. They are not an automatic preset. Change all four values for your own study area.
 
-### 4. Criar uma imagem VIIRS True Color
+To render the entire extent of the downloaded GOES file, omit `--domain`. For a true Full Disk image, the input files themselves must be ABI `F` products such as `ABI-L1b-RadF`.
 
-Para VIIRS, guarde no mesmo diretório os canais necessários e os ficheiros de geolocalização correspondentes:
+GOES ABI does not have a pure green channel. True Color synthesizes green from the blue, red, and vegetation channels.
+
+### 4. Create a VIIRS True Color image
+
+Keep the required spectral bands and matching geolocation files in the same directory:
 
 ```bash
 python examples/render_satellite.py \
   --sensor viirs \
-  --files "dados/viirs/*.h5" \
+  --files "data/viirs/*.h5" \
   --composite true_color \
-  --domain azores \
-  --output output/viirs_true_color.png
+  --domain -166 54 -162 56 \
+  --output output/viirs_shishaldin_true_color.png
 ```
 
-Os produtos recentes usam preferencialmente geolocalização corrigida pelo terreno: `GITCO` para bandas I e `GMTCO` para bandas M.
+The user defines the VIIRS domain with the same longitude/latitude order. The downloaded swath must intersect the requested box.
 
-## Escolher domínio ou área
+For recent SDR products, prefer terrain-corrected geolocation: `GITCO` for I bands and `GMTCO` for M bands.
 
-- GOES: descarregue `F` para Full Disk, `C` para CONUS ou `M` para Mesoscale.
-- GOES e VIIRS: use `--domain azores`, `--domain iberia`, `--domain north-atlantic` ou `--bbox`.
-- VIIRS: o recorte usa a geolocalização da passagem e só funciona se a passagem cobrir a área.
+## Source coverage versus output domain
 
-Consulte [Selecionar o domínio ou área](docs/DOMAINS.md) para todos os exemplos.
+These are separate decisions:
 
-## Descobrir os RGB disponíveis
+- GOES source coverage comes from the downloaded product: `F` for Full Disk, `C` for CONUS, or `M` for Mesoscale.
+- The output domain is always entered by the user with `--domain MIN_LON MIN_LAT MAX_LON MAX_LAT`.
+- Omitting `--domain` keeps the complete extent available in the source files.
+- Cropping cannot create observations outside the original GOES coverage or VIIRS swath.
 
-Os RGB disponíveis dependem dos canais presentes nos ficheiros:
+See [Choosing source coverage and a domain](docs/DOMAINS.md) for examples.
+
+## Discover available RGB composites
+
+Available RGBs depend on the channels found in the input files:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/*.nc" \
+  --files "data/goes/*.nc" \
   --list-composites
 ```
 
-Alguns exemplos comuns:
+Common examples include:
 
-- `true_color`: aparência próxima da visão humana durante o dia;
-- `natural_color`: realça vegetação, solo, neve e tipos de nuvem;
-- `airmass`: ajuda a interpretar massas de ar e dinâmica de níveis altos;
-- `night_microphysics`: separa nevoeiro, nuvens baixas e nuvens de gelo à noite.
+- `true_color`: a daytime view close to human vision;
+- `natural_color`: emphasizes vegetation, soil, snow, and cloud types;
+- `airmass`: supports interpretation of air masses and upper-level dynamics;
+- `night_microphysics`: separates fog, low clouds, and ice clouds at night.
 
-Consulte [Como construir um RGB](docs/RGB.md) para compreender os canais, diferenças térmicas, normalização e gama.
+Read [How RGB composites work](docs/RGB.md) for channel recipes, brightness-temperature differences, normalization, and gamma.
 
-## Exemplos completos
+## Complete runnable examples
 
-Não tem ficheiros preparados? Estes exemplos descarregam dados públicos de demonstração e criam a imagem:
+If you do not have prepared files, these scripts download public demonstration data and create an image:
 
-- [GOES ABI True Color](examples/demo_goes_true_color.py) — descarrega o exemplo GOES oficial do Satpy e produz um PNG;
-- [Suomi NPP VIIRS True Color](examples/demo_viirs_true_color.py) — descarrega uma passagem, bandas I/M e geolocalização;
-- [Explicação passo a passo e comandos](examples/README.md) — mostra também como usar ficheiros descarregados neste site.
+- [GOES ABI True Color](examples/demo_goes_true_color.py)
+- [Suomi NPP VIIRS True Color](examples/demo_viirs_true_color.py)
+- [Commands and step-by-step explanation](examples/README.md)
 
 ```bash
 python examples/demo_goes_true_color.py
 python examples/demo_viirs_true_color.py
 ```
 
-Os downloads de demonstração podem ter centenas de megabytes. Os ficheiros ficam em `data/demo-*` e não são adicionados ao Git.
+Demo downloads can be several hundred megabytes. Files are stored under `data/demo-*` and are excluded from Git.
 
-## Estrutura
+## Repository structure
 
 ```text
 .
@@ -118,16 +135,17 @@ Os downloads de demonstração podem ter centenas de megabytes. Os ficheiros fic
 └── requirements.txt
 ```
 
-## Fontes técnicas
+## Technical sources
 
-- [Satpy: leitura remota de GOES ABI](https://satpy.readthedocs.io/en/stable/remote_reading.html)
-- [Satpy: leitor VIIRS SDR](https://satpy.readthedocs.io/en/stable/api/satpy.readers.viirs_sdr.html)
-- [NOAA: guia CIMSS Natural True Color](https://www.star.nesdis.noaa.gov/GOES/documents/ABIQuickGuide_CIMSSRGB_v2.pdf)
-- [NOAA: guia Day Land Cloud RGB](https://www.star.nesdis.noaa.gov/goes/documents/QuickGuide_GOESR_daylandcloudRGB_final.pdf)
-- [NOAA CLASS: VIIRS SDR e geolocalização](https://www.class.noaa.gov/search/VIIRS_SDR)
+- [Satpy: remote reading for GOES ABI](https://satpy.readthedocs.io/en/stable/remote_reading.html)
+- [Satpy: VIIRS SDR reader](https://satpy.readthedocs.io/en/stable/api/satpy.readers.viirs_sdr.html)
+- [Satpy Scene cropping](https://satpy.readthedocs.io/en/stable/api/satpy.scene.html)
+- [NOAA: CIMSS Natural True Color guide](https://www.star.nesdis.noaa.gov/GOES/documents/ABIQuickGuide_CIMSSRGB_v2.pdf)
+- [NOAA: Day Land Cloud RGB guide](https://www.star.nesdis.noaa.gov/goes/documents/QuickGuide_GOESR_daylandcloudRGB_final.pdf)
+- [NOAA CLASS: VIIRS SDR and geolocation](https://www.class.noaa.gov/search/VIIRS_SDR)
 
-Os dados continuam a pertencer aos respetivos produtores. Verifique sempre as condições e avisos operacionais das fontes NOAA.
+Data remains the property of its respective producer. Always review the source terms and operational notices.
 
-## Licença
+## License
 
-Código disponibilizado sob a [licença MIT](LICENSE). A licença não altera os termos dos dados, imagens ou documentação externos.
+Code is available under the [MIT License](LICENSE). This license does not change the terms of external data, images, or documentation.

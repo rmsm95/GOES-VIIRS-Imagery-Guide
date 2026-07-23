@@ -3,7 +3,6 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 from examples.render_satellite import (
-    DOMAIN_BBOXES,
     expand_inputs,
     has_viirs_geolocation,
     resolve_bbox,
@@ -47,20 +46,13 @@ class InputExpansionTests(TestCase):
 
 
 class DomainTests(TestCase):
-    def test_named_domain_returns_expected_bbox(self):
-        self.assertEqual(resolve_bbox("azores", None), DOMAIN_BBOXES["azores"])
+    def test_missing_domain_keeps_source_extent(self):
+        self.assertIsNone(resolve_bbox(None))
 
-    def test_full_disk_keeps_source_extent(self):
-        self.assertIsNone(resolve_bbox("full-disk", None))
-
-    def test_custom_bbox_overrides_named_domain(self):
+    def test_user_domain_is_returned(self):
         custom = (-30, 35, -20, 43)
-        self.assertEqual(resolve_bbox("conus", custom), custom)
+        self.assertEqual(resolve_bbox(custom), custom)
 
-    def test_custom_domain_requires_bbox(self):
-        with self.assertRaisesRegex(ValueError, "requer --bbox"):
-            resolve_bbox("custom", None)
-
-    def test_bbox_order_is_validated(self):
-        with self.assertRaisesRegex(ValueError, "longitude inválida"):
+    def test_domain_order_is_validated(self):
+        with self.assertRaisesRegex(ValueError, "invalid longitude limits"):
             validate_bbox((10, 30, -10, 40))

@@ -8,12 +8,12 @@ from pathlib import Path
 
 try:
     from .render_satellite import (
-        add_domain_arguments,
+        add_domain_argument,
         crop_and_resample_scene,
         resolve_bbox,
     )
 except ImportError:
-    from render_satellite import add_domain_arguments, crop_and_resample_scene, resolve_bbox
+    from render_satellite import add_domain_argument, crop_and_resample_scene, resolve_bbox
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,14 +21,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data-dir",
         default="data/demo-goes",
-        help="Diretório usado para guardar os dados de demonstração.",
+        help="Directory used to store the demo data.",
     )
     parser.add_argument(
         "--output",
         default="output/demo_goes_true_color.png",
-        help="Imagem PNG de saída.",
+        help="Output PNG image.",
     )
-    add_domain_arguments(parser, default="conus")
+    add_domain_argument(parser)
     return parser
 
 
@@ -36,25 +36,19 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     try:
-        resolve_bbox(args.domain, args.bbox)
+        resolve_bbox(args.domain)
     except ValueError as exc:
         parser.error(str(exc))
-
-    if args.domain in {"full-disk", "mesoscale"}:
-        raise SystemExit(
-            "Este conjunto de demonstração é CONUS. Para Full Disk ou Mesoscale, "
-            "descarregue ficheiros F/M e use render_satellite.py."
-        )
 
     try:
         from satpy import Scene
         from satpy.demo.abi_l1b import get_us_midlatitude_cyclone_abi
     except ImportError as exc:
         raise SystemExit(
-            "Instale primeiro as dependências: python -m pip install -r requirements.txt"
+            "Install the dependencies first: python -m pip install -r requirements.txt"
         ) from exc
 
-    print("A obter o conjunto GOES ABI de demonstração…")
+    print("Downloading the GOES ABI demo dataset...")
     files = get_us_midlatitude_cyclone_abi(base_dir=args.data_dir)
     scene = Scene(reader="abi_l1b", filenames=files)
     available = {str(name) for name in scene.available_composite_names()}
@@ -65,20 +59,19 @@ def main() -> int:
         composite = "true_color_raw"
     else:
         raise SystemExit(
-            "Os ficheiros de demonstração não disponibilizam true_color nem true_color_raw."
+            "The demo files provide neither true_color nor true_color_raw."
         )
 
     scene.load([composite], generate=True)
     resampled = crop_and_resample_scene(
         scene,
         domain=args.domain,
-        bbox=args.bbox,
     )
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     resampled.save_dataset(composite, filename=str(output), writer="simple_image")
-    print(f"Imagem criada: {output.resolve()}")
+    print(f"Image created: {output.resolve()}")
     return 0
 
 

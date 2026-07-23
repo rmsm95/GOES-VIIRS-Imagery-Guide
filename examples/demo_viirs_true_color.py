@@ -8,12 +8,12 @@ from pathlib import Path
 
 try:
     from .render_satellite import (
-        add_domain_arguments,
+        add_domain_argument,
         crop_and_resample_scene,
         resolve_bbox,
     )
 except ImportError:
-    from render_satellite import add_domain_arguments, crop_and_resample_scene, resolve_bbox
+    from render_satellite import add_domain_argument, crop_and_resample_scene, resolve_bbox
 
 
 DEMO_CHANNELS = ("I01", "I02", "M03", "M04", "M05")
@@ -24,14 +24,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data-dir",
         default="data/demo-viirs",
-        help="Diretório usado para guardar os dados de demonstração.",
+        help="Directory used to store the demo data.",
     )
     parser.add_argument(
         "--output",
         default="output/demo_viirs_true_color.png",
-        help="Imagem PNG de saída.",
+        help="Output PNG image.",
     )
-    add_domain_arguments(parser)
+    add_domain_argument(parser)
     return parser
 
 
@@ -39,7 +39,7 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     try:
-        resolve_bbox(args.domain, args.bbox)
+        resolve_bbox(args.domain)
     except ValueError as exc:
         parser.error(str(exc))
 
@@ -48,10 +48,10 @@ def main() -> int:
         from satpy.demo.viirs_sdr import get_viirs_sdr_20170128_1229
     except ImportError as exc:
         raise SystemExit(
-            "Instale primeiro as dependências: python -m pip install -r requirements.txt"
+            "Install the dependencies first: python -m pip install -r requirements.txt"
         ) from exc
 
-    print("A obter uma granule Suomi NPP VIIRS com bandas I/M e geolocalização…")
+    print("Downloading a Suomi NPP VIIRS granule with I/M bands and geolocation...")
     files = get_viirs_sdr_20170128_1229(
         base_dir=args.data_dir,
         channels=DEMO_CHANNELS,
@@ -61,21 +61,20 @@ def main() -> int:
     available = {str(name) for name in scene.available_composite_names()}
     if "true_color" not in available:
         raise SystemExit(
-            "O conjunto de demonstração não disponibiliza true_color. "
-            "Verifique a versão do Satpy e os ficheiros descarregados."
+            "The demo dataset does not provide true_color. "
+            "Check the Satpy version and downloaded files."
         )
 
     scene.load(["true_color"], generate=True)
     resampled = crop_and_resample_scene(
         scene,
         domain=args.domain,
-        bbox=args.bbox,
     )
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     resampled.save_dataset("true_color", filename=str(output), writer="simple_image")
-    print(f"Imagem criada: {output.resolve()}")
+    print(f"Image created: {output.resolve()}")
     return 0
 
 

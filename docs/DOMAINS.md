@@ -1,107 +1,103 @@
-# Selecionar o domínio ou área
+# Choosing source coverage and a domain
 
-Há duas decisões diferentes:
+There are two separate spatial decisions:
 
-1. escolher a cobertura do ficheiro original;
-2. recortar a imagem final para uma região geográfica.
+1. choose the coverage of the source file;
+2. enter the geographic domain to crop from that source.
 
-O recorte não cria dados que não existam no ficheiro de origem.
+A crop cannot create data that is absent from the source file.
 
-## GOES: cobertura do produto
+## The domain is always user-defined
 
-No downloader, os produtos ABI terminam normalmente em:
+The code contains no named geographic presets. Enter four longitude/latitude limits:
 
-| Sufixo | Cobertura | Exemplo |
+```text
+--domain MIN_LON MIN_LAT MAX_LON MAX_LAT
+```
+
+The limits must follow these rules:
+
+```text
+-180 <= MIN_LON < MAX_LON <= 180
+ -90 <= MIN_LAT < MAX_LAT <= 90
+```
+
+Use negative longitude for locations west of Greenwich and negative latitude for locations south of the equator.
+
+### Example around Shishaldin
+
+This is an example box entered directly by the user:
+
+```bash
+--domain -166 54 -162 56
+```
+
+It means:
+
+| Argument | Value |
+|---|---:|
+| minimum longitude | `-166` |
+| minimum latitude | `54` |
+| maximum longitude | `-162` |
+| maximum latitude | `56` |
+
+Change the four values to match the exact study area and desired context. The command does not select Shishaldin or any other region automatically.
+
+## GOES source coverage
+
+ABI product names normally end with:
+
+| Suffix | Source coverage | Example |
 |---|---|---|
 | `F` | Full Disk | `ABI-L1b-RadF` |
 | `C` | CONUS | `ABI-L1b-RadC` |
 | `M` | Mesoscale | `ABI-L1b-RadM` |
 
-Para obter Full Disk, descarregue um produto `F`. Um ficheiro CONUS ou Mesoscale não pode ser transformado em Full Disk.
-
-Para manter toda a cobertura do ficheiro Full Disk:
+To render a real Full Disk image, download an `F` product and omit `--domain`:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/full-disk/*.nc" \
+  --files "data/goes/full-disk/*.nc" \
   --composite true_color \
-  --domain full-disk \
   --output output/goes_full_disk.png
 ```
 
-Para manter todo o domínio móvel de um produto Mesoscale:
+A CONUS or Mesoscale file cannot be converted into Full Disk.
+
+To crop a GOES source to the user-defined Shishaldin example:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/mesoscale/*.nc" \
+  --files "data/goes/*.nc" \
   --composite true_color \
-  --domain mesoscale \
-  --output output/goes_mesoscale.png
+  --domain -166 54 -162 56 \
+  --output output/goes_shishaldin.png
 ```
 
-## Presets geográficos
+The requested coordinates must intersect the selected satellite's source coverage.
 
-O parâmetro `--domain` também pode recortar GOES ou VIIRS:
+## VIIRS swaths
 
-| Domínio | Limites aproximados `(oeste, sul, este, norte)` |
-|---|---|
-| `conus` | `(-125, 24, -66, 50)` |
-| `azores` | `(-33.5, 34, -21, 42.5)` |
-| `iberia` | `(-11, 35, 5, 45)` |
-| `north-atlantic` | `(-70, 10, 20, 70)` |
-
-Exemplo GOES Full Disk recortado para os Açores:
-
-```bash
-python examples/render_satellite.py \
-  --sensor goes \
-  --files "dados/goes/full-disk/*.nc" \
-  --composite true_color \
-  --domain azores \
-  --output output/goes_acores.png
-```
-
-## Área personalizada
-
-Use `--bbox OESTE SUL ESTE NORTE` em graus:
-
-```bash
-python examples/render_satellite.py \
-  --sensor goes \
-  --files "dados/goes/full-disk/*.nc" \
-  --composite true_color \
-  --domain custom \
-  --bbox -35 32 -18 45 \
-  --output output/goes_area_personalizada.png
-```
-
-`--bbox` tem prioridade sobre qualquer preset indicado em `--domain`.
-
-## VIIRS
-
-VIIRS observa faixas orbitais. A área selecionada tem de intersectar a passagem descarregada e os ficheiros de geolocalização devem estar presentes.
+VIIRS observes orbital swaths rather than a geostationary disk. The downloaded swath must intersect the domain, and its matching geolocation files must be present.
 
 ```bash
 python examples/render_satellite.py \
   --sensor viirs \
-  --files "dados/viirs/*.h5" \
+  --files "data/viirs/*.h5" \
   --composite true_color \
-  --domain azores \
-  --output output/viirs_acores.png
+  --domain -166 54 -162 56 \
+  --output output/viirs_shishaldin.png
 ```
 
-Ou com limites próprios:
+The crop reduces processing and output image size. It does not reduce bytes already downloaded. Inspect the orbit or granule geolocation first to avoid downloading VIIRS passes that do not cover the requested domain.
 
-```bash
-python examples/render_satellite.py \
-  --sensor viirs \
-  --files "dados/viirs/*.h5" \
-  --composite true_color \
-  --domain custom \
-  --bbox -31 36 -24 40 \
-  --output output/viirs_area_personalizada.png
-```
+## Coordinate checklist
 
-O recorte reduz o processamento e o tamanho da imagem resultante, mas não reduz os bytes já descarregados. Para evitar passagens VIIRS que não cobrem a região, é necessário consultar previamente a órbita ou a geolocalização de cada granule.
+- Enter longitude first and latitude second.
+- Enter the minimum corner before the maximum corner.
+- Keep all four values in decimal degrees.
+- Confirm that the box does not cross the antimeridian. A single `MIN_LON < MAX_LON` box cannot cross it.
+- Confirm that all GOES channels come from the same scan.
+- Confirm that VIIRS spectral and geolocation files come from the same granule.
