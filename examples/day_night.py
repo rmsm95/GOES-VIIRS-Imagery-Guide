@@ -8,13 +8,17 @@ time of day:
 * twilight pixels  -> a smooth mix of the two;
 * nighttime pixels -> clouds from a thermal / low-light source.
 
-Night source per sensor:
+Night source, in order of preference:
 
-* GOES ABI: the clean infrared window band ``C13`` (10.3 um). Cold cloud tops
-  are drawn bright, warm surface dark, so clouds stay visible in the dark.
-* VIIRS: the Day/Night Band (``dynamic_dnb``) when the DNB band (SVDNB) and its
-  geolocation (GDNBO) are present, showing moonlit clouds and city lights.
-  Otherwise it falls back to the infrared window (``I05`` or ``M15``).
+1. ``night_microphysics`` — the standard colour infrared night RGB
+   (R = 12.3-10.3 um, G = 10.3-3.9 um, B = 10.3 um). This is what CIRA/RAMMB
+   style day/night products show at night: fog and low water clouds separate
+   from thick high ice cloud by colour, instead of a flat grey. Needs C07, C13
+   and C15 on ABI.
+2. ``dynamic_dnb`` (VIIRS only) — the Day/Night Band, moonlit clouds and city
+   lights, when SVDNB and its GDNBO geolocation are present.
+3. A single infrared window band (``C13``, or ``I05``/``M15`` on VIIRS) shaded
+   grey as a last resort when the bands above are missing.
 
 The three functions ``day_weight``, ``ir_cloud_gray`` and ``blend_day_night``
 are plain array math with no Satpy dependency, so they can be unit tested
@@ -31,8 +35,11 @@ import numpy as np
 # Solar zenith angle (degrees) marking the day/twilight/night transition.
 # The sun is at the horizon at 90 deg. Below DAY_LIMIT it is full daylight;
 # above NIGHT_LIMIT it is full night; in between the two views cross-fade.
+# The night side must take over slightly *before* the sun reaches the horizon:
+# by 88 deg the visible channels carry almost no signal, so letting the day
+# view contribute past that only drags a dark band across the terminator.
 DAY_LIMIT = 85.0
-NIGHT_LIMIT = 91.0
+NIGHT_LIMIT = 88.0
 
 # Brightness-temperature stretch (Kelvin) for infrared cloud shading.
 # Cold cloud tops -> bright (1.0); warm surface -> dark (0.0).
@@ -40,9 +47,12 @@ IR_COLD_KELVIN = 190.0
 IR_WARM_KELVIN = 300.0
 
 # Candidate night sources, in order of preference, per sensor.
+NIGHT_RGB_COMPOSITE = "night_microphysics"  # colour IR night RGB (CIRA style)
 GOES_NIGHT_IR = "C13"
 VIIRS_DNB_COMPOSITE = "dynamic_dnb"
 VIIRS_NIGHT_IR = ("I05", "M15")
+# Night sources that are already three-band images rather than a single band.
+RGB_NIGHT_SOURCES = frozenset({NIGHT_RGB_COMPOSITE})
 
 
 def day_weight(
@@ -83,10 +93,14 @@ def ir_cloud_gray(
 
 def blend_day_night(
     day_rgb: np.ndarray,
-    night_gray: np.ndarray,
+    night: np.ndarray,
     weight: np.ndarray,
 ) -> np.ndarray:
-    """Blend a day RGB (3, H, W) with a night grayscale (H, W) by ``weight``.
+    """Blend a day RGB (3, H, W) with a night image by ``weight``.
+
+    ``night`` may be a colour RGB shaped (3, H, W) — for example the night
+    microphysics composite — or a single grayscale band shaped (H, W), which is
+    repeated across the three channels.
 
     ``weight`` is the daytime fraction (see :func:`day_weight`) shaped (H, W).
     Returns an array shaped (3, H, W) clipped to 0..1.
@@ -94,8 +108,13 @@ def blend_day_night(
     day = np.nan_to_num(np.asarray(day_rgb, dtype="float64"), nan=0.0)
     if day.ndim != 3 or day.shape[0] != 3:
         raise ValueError("day_rgb must have shape (3, H, W)")
-    night = np.nan_to_num(np.asarray(night_gray, dtype="float64"), nan=0.0)
-    night_rgb = np.repeat(night[np.newaxis, ...], 3, axis=0)
+    night = np.nan_to_num(np.asarray(night, dtype="float64"), nan=0.0)
+    if night.ndim == 2:
+        night_rgb = np.repeat(night[np.newaxis, ...], 3, axis=0)
+    elif night.ndim == 3 and night.shape[0] == 3:
+        night_rgb = night
+    else:
+        raise ValueError("night must have shape (H, W) or (3, H, W)")
     day_fraction = np.asarray(weight, dtype="float64")[np.newaxis, ...]
     blended = day_fraction * day + (1.0 - day_fraction) * night_rgb
     return np.clip(blended, 0.0, 1.0)
@@ -140,9 +159,9 @@ def night_source_names(sensor: str, available: Iterable[str] = ()) -> list[str]:
     required.
     """
     if sensor == "goes":
-        return [GOES_NIGHT_IR]
-    # VIIRS: prefer the Day/Night Band, fall back to an infrared window band.
-    return [VIIRS_DNB_COMPOSITE, *VIIRS_NIGHT_IR]
+        return [NIGHT_RGB_COMPOSITE, GOES_NIGHT_IR]
+    # VIIRS: colour night RGB first, then the Day/Night Band, then plain IR.
+    return [NIGHT_RGB_COMPOSITE, VIIRS_DNB_COMPOSITE, *VIIRS_NIGHT_IR]
 
 
 def compose_day_night_image(scene, sensor: str, *, day_composite: str = "true_color"):
@@ -157,7 +176,7 @@ def compose_day_night_image(scene, sensor: str, *, day_composite: str = "true_co
     day_rgb = _enhanced_rgb(scene, day_composite)
 
     # Pick the first night source that is actually present in the scene.
-    night_gray = None
+    night_image = None
     used_night = None
     for name in night_source_names(sensor, scene.keys()):
         try:
@@ -165,12 +184,16 @@ def compose_day_night_image(scene, sensor: str, *, day_composite: str = "true_co
         except KeyError:
             continue
         used_night = name
-        if name == VIIRS_DNB_COMPOSITE:
-            night_gray = _enhanced_gray(scene, name)
+        if name in RGB_NIGHT_SOURCES:
+            # Colour infrared night RGB: low cloud and fog separate from high
+            # ice cloud by colour, as in CIRA/RAMMB day/night products.
+            night_image = _enhanced_rgb(scene, name)
+        elif name == VIIRS_DNB_COMPOSITE:
+            night_image = _enhanced_gray(scene, name)
         else:
-            night_gray = ir_cloud_gray(np.asarray(dataset.values, dtype="float64"))
+            night_image = ir_cloud_gray(np.asarray(dataset.values, dtype="float64"))
         break
-    if night_gray is None:
+    if night_image is None:
         raise ValueError(
             f"No night source found for sensor '{sensor}'. Expected one of: "
             f"{', '.join(night_source_names(sensor, scene.keys()))}."
@@ -188,7 +211,7 @@ def compose_day_night_image(scene, sensor: str, *, day_composite: str = "true_co
     zenith = sun_zenith_angle(start_time, np.asarray(lons), np.asarray(lats))
     # Off-disk / invalid geometry -> treat as night so nothing turns into NaN.
     weight = np.nan_to_num(day_weight(zenith), nan=0.0)
-    blended = blend_day_night(day_rgb, night_gray, weight)
+    blended = blend_day_night(day_rgb, night_image, weight)
 
     rgb_uint8 = (np.transpose(blended, (1, 2, 0)) * 255.0).round().astype("uint8")
     image = Image.fromarray(rgb_uint8, mode="RGB")

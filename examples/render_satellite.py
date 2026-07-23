@@ -36,6 +36,12 @@ SUBPLOT_BOTTOM, SUBPLOT_TOP = 0.09, 0.91
 MAX_AXES_WIDTH_INCHES, MAX_AXES_HEIGHT_INCHES = 13.0, 10.0
 MIN_AXES_HEIGHT_INCHES = 3.5  # keep room for the title and caption on wide domains
 
+# Shishaldin volcano, marked on maps that cover it.
+SHISHALDIN_LON, SHISHALDIN_LAT = -163.9711, 54.7554
+PLAIN_FIGURE_WIDTH_INCHES = 13.5
+PLAIN_FIGURE_HEIGHT_FACTOR = 0.92
+PLAIN_FIGURE_DPI = 160
+
 
 def expand_inputs(values: Iterable[str]) -> list[str]:
     """Expand files, directories, and quoted glob patterns deterministically."""
@@ -260,6 +266,167 @@ def resample_to_max_size(scene, composite: str, *, max_size: int = 1600):
                 f"Composite '{composite}' could not be generated after resampling."
             ) from exc
     return resampled
+
+
+def _format_longitude(value: float, _pos=None) -> str:
+    """Longitude tick label such as '164°W'."""
+    wrapped = ((float(value) + 180.0) % 360.0) - 180.0
+    hemisphere = "E" if wrapped >= 0 else "W"
+    return f"{abs(wrapped):g}°{hemisphere}"
+
+
+def _format_latitude(value: float, _pos=None) -> str:
+    """Latitude tick label such as '54°N'."""
+    hemisphere = "N" if float(value) >= 0 else "S"
+    return f"{abs(float(value)):g}°{hemisphere}"
+
+
+def coastline_segments(bounds, resolution: str = "10m"):
+    """Natural Earth coastline segments clipped to a lon/lat box."""
+    import cartopy.feature as cfeature
+    import numpy as np
+    from shapely.geometry import box
+
+    min_lon, min_lat, max_lon, max_lat = bounds
+    clip = box(min_lon, min_lat, max_lon, max_lat)
+    feature = cfeature.NaturalEarthFeature("physical", "coastline", resolution)
+    segments = []
+    for geometry in feature.intersecting_geometries(
+        [min_lon, max_lon, min_lat, max_lat]
+    ):
+        clipped = geometry.intersection(clip)
+        parts = clipped.geoms if hasattr(clipped, "geoms") else [clipped]
+        for line in parts:
+            if line.is_empty or line.length == 0:
+                continue
+            xs, ys = line.xy
+            segments.append((np.asarray(xs), np.asarray(ys)))
+    return segments
+
+
+def save_lonlat_map(
+    scene,
+    composite: str,
+    output: str | Path,
+    *,
+    title: str | None = None,
+    time_label: str | None = None,
+    dpi: int = PLAIN_FIGURE_DPI,
+    image=None,
+    coastline_resolution: str = "10m",
+    mark_shishaldin: bool = True,
+) -> Path:
+    """Save a regular lon/lat map on plain axes.
+
+    Straight rectangular grid, decimal longitude/latitude ticks, thin white
+    coastlines, and a red triangle on Shishaldin when the domain covers it.
+    The dataset must already be on a geographic (lon/lat) area.
+    """
+    output_path = Path(output).expanduser()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        from cartopy import config as cartopy_config
+        import matplotlib.pyplot as plt
+        from matplotlib.ticker import FuncFormatter
+        from satpy.enhancements.enhancer import get_enhanced_image
+    except ImportError as exc:
+        raise SystemExit(
+            "Map plotting dependencies are missing. Run: "
+            "python -m pip install -r requirements.txt"
+        ) from exc
+
+    cartopy_data_dir = Path(
+        os.environ.get("CARTOPY_DATA_DIR", output_path.parent / ".cartopy")
+    )
+    cartopy_data_dir.mkdir(parents=True, exist_ok=True)
+    cartopy_config["data_dir"] = str(cartopy_data_dir)
+
+    dataset = scene[composite]
+    area = dataset.attrs.get("area")
+    if area is None:
+        raise ValueError(f"Dataset '{composite}' has no area information.")
+    if not area.crs.is_geographic:
+        raise ValueError(
+            "save_lonlat_map needs a regular lon/lat area. Render without "
+            "--native-projection, or use save_dataset_with_lonlat_grid."
+        )
+
+    min_lon, min_lat, max_lon, max_lat = area.area_extent
+    picture = image if image is not None else get_enhanced_image(dataset).pil_image()
+
+    span_lon = max(max_lon - min_lon, 1e-6)
+    span_lat = max(max_lat - min_lat, 1e-6)
+    # Reproduces the paper figures: a 10 x 4.5 degree domain gives (13.5, 5.6).
+    figure_width = PLAIN_FIGURE_WIDTH_INCHES
+    figure_height = max(
+        3.0, min(11.0, figure_width * span_lat / span_lon * PLAIN_FIGURE_HEIGHT_FACTOR)
+    )
+
+    figure, axis = plt.subplots(figsize=(figure_width, figure_height))
+    axis.imshow(
+        picture,
+        extent=(min_lon, max_lon, min_lat, max_lat),
+        origin="upper",
+        aspect="auto",
+        zorder=0,
+    )
+    axis.grid(color="white", alpha=0.45, ls="--", lw=0.5, zorder=1)
+    for line_x, line_y in coastline_segments(
+        (min_lon, min_lat, max_lon, max_lat), coastline_resolution
+    ):
+        axis.plot(line_x, line_y, color="red", lw=0.8, zorder=4)
+
+    if (
+        mark_shishaldin
+        and min_lon <= SHISHALDIN_LON <= max_lon
+        and min_lat <= SHISHALDIN_LAT <= max_lat
+    ):
+        axis.plot(
+            SHISHALDIN_LON,
+            SHISHALDIN_LAT,
+            "^",
+            color="red",
+            markersize=10,
+            zorder=6,
+        )
+
+    axis.set_xlim(min_lon, max_lon)
+    axis.set_ylim(min_lat, max_lat)
+    axis.xaxis.set_major_formatter(FuncFormatter(_format_longitude))
+    axis.yaxis.set_major_formatter(FuncFormatter(_format_latitude))
+    axis.set_xlabel("Longitude")
+    axis.set_ylabel("Latitude")
+    # Product on the left, scan time on the right, as in the reference figures.
+    if title:
+        axis.set_title(title, loc="left", fontsize=11)
+    if time_label:
+        axis.set_title(time_label, loc="right", fontsize=11)
+    figure.tight_layout()
+    figure.savefig(output_path, dpi=dpi)
+    plt.close(figure)
+    return output_path
+
+
+def scene_time_label(scene, composite: str) -> str:
+    """UTC timestamp of the scan, formatted like '03 October 2023 19:00 UTC'."""
+    start = scene[composite].attrs.get("start_time")
+    return f"{start:%Y/%m/%d %H:%M} UTC" if start is not None else ""
+
+
+def save_map(scene, composite: str, output, *, title=None, time_label=None,
+             image=None) -> Path:
+    """Save a map, choosing the plain lon/lat style or the projected style."""
+    area = scene[composite].attrs.get("area")
+    if time_label is None:
+        time_label = scene_time_label(scene, composite)
+    if area is not None and area.crs.is_geographic:
+        return save_lonlat_map(
+            scene, composite, output, title=title, time_label=time_label, image=image
+        )
+    return save_dataset_with_lonlat_grid(
+        scene, composite, output, title=title, image=image
+    )
 
 
 def save_dataset_with_lonlat_grid(
@@ -599,12 +766,12 @@ def main(argv: list[str] | None = None) -> int:
         output.parent.mkdir(parents=True, exist_ok=True)
         output_scene.save_dataset(composite, filename=str(output), writer="simple_image")
     else:
-        save_dataset_with_lonlat_grid(
+        save_map(
             output_scene,
             composite,
             output,
             title=args.title
-            or f"{args.sensor.upper()} {composite.replace('_', ' ').title()}",
+            or f"{args.sensor.upper()} - {composite.replace('_', ' ').title()}",
         )
     print(f"Image created: {output.resolve()}")
     return 0

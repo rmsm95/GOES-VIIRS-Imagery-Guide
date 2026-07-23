@@ -24,7 +24,8 @@ from __future__ import annotations
 # name -> (min_lon, min_lat, max_lon, max_lat)
 DOMAINS: dict[str, tuple[float, float, float, float]] = {
     # --- Alaska examples (edit these for your own work) --------------------
-    "shishaldin": (-166.0, 54.0, -162.0, 56.0),        # tight box on the volcano
+    "shishaldin": (-166.0, 53.0, -162.0, 56.0),        # standard Shishaldin domain
+    "shishaldin_big": (-169.0, 52.5, -159.0, 57.0),    # enlarged domain
     "shishaldin_wide": (-170.0, 52.0, -158.0, 58.0),   # regional context
     "alaska_peninsula": (-165.0, 54.0, -153.0, 60.0),  # broader peninsula view
     # --- Generic examples --------------------------------------------------

@@ -63,9 +63,10 @@ decimal degrees:
 The named domains are only **examples**. Open `examples/domains.py` to add or
 change boxes for your own study areas.
 
-Images use a flat WGS84 lon/lat projection (a rectangular map with straight
-gridlines) by default. Add `--native-projection` only if you want the
-satellite's own geostationary projection instead. See
+Add `--native-projection` to keep the GOES (geostationary) projection — the
+satellite's own projection, with longitude/latitude drawn as reference
+gridlines. This is what the notebooks use for GOES. Without it, the crop is
+placed on a flat WGS84 lon/lat grid. See
 [Choosing source coverage and a domain](docs/DOMAINS.md).
 
 To render the entire extent of the downloaded GOES file, omit `--domain`. For a true Full Disk image, the input files themselves must be ABI `F` products such as `ABI-L1b-RadF`.
@@ -184,11 +185,12 @@ python -m jupyter lab
 ```
 
 GitHub displays every saved result without requiring JupyterLab. Each notebook
-is simple: it produces **one image** over Shishaldin and embeds it, keeping the
-recipe, the named domain, the code, and the exact PNG together. The GOES
-notebooks use public GOES-18 data from **3 October 2023 at 19:00 UTC** (and
-17:00 UTC for the night side of the day/night notebook), cropped to the
-`shishaldin` named domain on the flat WGS84 lon/lat grid.
+is simple: it produces **one image** and embeds it, keeping the recipe, the
+named domain, the code, and the exact PNG together. The GOES notebooks use
+public GOES-18 data from **3 October 2023 at 19:00 UTC** (and 17:00 UTC for the
+night side of the day/night notebook), cropped to the `shishaldin` named domain
+and kept in the **GOES geostationary projection**. The VIIRS notebook renders a
+complete Suomi NPP demonstration granule (not Shishaldin — see the notebook).
 
 ## Repository structure
 

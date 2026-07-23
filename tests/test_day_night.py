@@ -7,15 +7,20 @@ from examples.day_night import blend_day_night, day_weight, ir_cloud_gray
 
 class DayWeightTests(TestCase):
     def test_full_day_is_one_and_full_night_is_zero(self):
-        weight = day_weight(np.array([0.0, 85.0, 91.0, 130.0]))
+        weight = day_weight(np.array([0.0, 85.0, 88.0, 130.0]))
         self.assertEqual(weight[0], 1.0)
         self.assertEqual(weight[1], 1.0)
         self.assertEqual(weight[2], 0.0)
         self.assertEqual(weight[3], 0.0)
 
     def test_twilight_midpoint_is_a_half(self):
-        # Default band is 85..91 degrees; the midpoint 88 is a 50/50 blend.
-        self.assertAlmostEqual(float(day_weight(np.array([88.0]))[0]), 0.5)
+        # Default band is 85..88 degrees; the midpoint 86.5 is a 50/50 blend.
+        self.assertAlmostEqual(float(day_weight(np.array([86.5]))[0]), 0.5)
+
+    def test_night_takes_over_before_the_sun_sets(self):
+        # At 89 deg the sun is still just above the horizon, but the visible
+        # channels are already useless, so the night view must be fully in.
+        self.assertEqual(float(day_weight(np.array([89.0]))[0]), 0.0)
 
     def test_weight_decreases_with_zenith(self):
         weight = day_weight(np.linspace(0.0, 180.0, 50))

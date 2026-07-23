@@ -44,9 +44,15 @@ and embeds it, so GitHub shows the code and the exact result together.
 - The VIIRS notebook downloads one Suomi NPP granule with the I/M bands and
   geolocation and renders one image over the granule.
 
-Every image uses the flat WGS84 lon/lat projection with a longitude/latitude
-grid and Natural Earth coastlines. The PNG is embedded in the notebook, so it is
-visible on GitHub without running JupyterLab.
+The GOES images keep the **GOES (geostationary) projection** — the satellite's
+own projection, with longitude/latitude drawn as reference gridlines rather than
+reprojected. Away from the sub-satellite point (as over Alaska) that frame is
+slightly tilted, which is expected. VIIRS is an orbital swath with no fixed
+projection, so it is placed on a regular lon/lat grid.
+
+Every image includes a longitude/latitude grid and Natural Earth coastlines. The
+PNG is embedded in the notebook, so it is visible on GitHub without running
+JupyterLab.
 
 ## Use your own domain
 
