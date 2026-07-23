@@ -315,6 +315,8 @@ def save_lonlat_map(
     image=None,
     coastline_resolution: str = "10m",
     mark_shishaldin: bool = True,
+    points=None,
+    points_label: str | None = None,
 ) -> Path:
     """Save a regular lon/lat map on plain axes.
 
@@ -390,6 +392,18 @@ def save_lonlat_map(
             markersize=10,
             zorder=6,
         )
+
+    if points is not None:
+        point_lons, point_lats = points
+        if len(point_lons):
+            axis.scatter(
+                point_lons, point_lats,
+                s=14, marker="o",
+                facecolors="none", edgecolors="yellow", linewidths=0.8,
+                zorder=5, label=points_label,
+            )
+            if points_label:
+                axis.legend(loc="upper right", framealpha=0.7, fontsize=9)
 
     axis.set_xlim(min_lon, max_lon)
     axis.set_ylim(min_lat, max_lat)
