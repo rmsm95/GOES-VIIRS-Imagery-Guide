@@ -54,6 +54,65 @@ VIIRS_NIGHT_IR = ("I05", "M15")
 # Night sources that are already three-band images rather than a single band.
 RGB_NIGHT_SOURCES = frozenset({NIGHT_RGB_COMPOSITE})
 
+# GeoColor-style night: the 3.9 um / infrared-window pair per sensor.
+# (shortwave IR, window IR)
+NIGHT_PAIRS = {"goes": ("C07", "C13"), "viirs": ("M12", "M15")}
+
+# Night palette. Clear sky stays a dark navy, thick high (cold) cloud is drawn
+# near-white, and low water cloud/fog is tinted pale blue, as in CIRA GeoColor.
+NIGHT_BACKGROUND = (0.02, 0.04, 0.10)
+NIGHT_HIGH_CLOUD = (0.95, 0.96, 0.98)
+NIGHT_LOW_CLOUD = (0.45, 0.78, 1.00)
+# Brightness-temperature difference (3.9 - window, K) mapping to "low cloud".
+# At night low water cloud is strongly negative; ice cloud sits near zero.
+LOW_CLOUD_BTD_START = -0.5
+LOW_CLOUD_BTD_FULL = -4.0
+
+
+def low_cloud_fraction(
+    shortwave_ir: np.ndarray,
+    window_ir: np.ndarray,
+    *,
+    btd_start: float = LOW_CLOUD_BTD_START,
+    btd_full: float = LOW_CLOUD_BTD_FULL,
+) -> np.ndarray:
+    """How much each pixel looks like night-time low water cloud or fog.
+
+    Uses the 3.9 um minus window-IR brightness-temperature difference, which is
+    strongly negative for low water cloud at night and near zero for high ice
+    cloud. Returns 0 (not low cloud) to 1 (definitely low cloud).
+    """
+    if btd_full >= btd_start:
+        raise ValueError("btd_full must be more negative than btd_start")
+    difference = np.asarray(shortwave_ir, dtype="float64") - np.asarray(
+        window_ir, dtype="float64"
+    )
+    fraction = (difference - btd_start) / (btd_full - btd_start)
+    return np.clip(np.nan_to_num(fraction, nan=0.0), 0.0, 1.0)
+
+
+def geocolor_night_rgb(
+    shortwave_ir: np.ndarray,
+    window_ir: np.ndarray,
+    *,
+    cold_kelvin: float = IR_COLD_KELVIN,
+    warm_kelvin: float = IR_WARM_KELVIN,
+) -> np.ndarray:
+    """GeoColor-style night image: pale-blue low cloud, white high cloud, dark sky.
+
+    Both inputs are brightness temperatures in Kelvin. Returns (3, H, W) in 0..1.
+    """
+    opacity = ir_cloud_gray(window_ir, cold_kelvin=cold_kelvin, warm_kelvin=warm_kelvin)
+    low = low_cloud_fraction(shortwave_ir, window_ir)
+
+    high_rgb = np.asarray(NIGHT_HIGH_CLOUD, dtype="float64")[:, None, None]
+    low_rgb = np.asarray(NIGHT_LOW_CLOUD, dtype="float64")[:, None, None]
+    background = np.asarray(NIGHT_BACKGROUND, dtype="float64")[:, None, None]
+
+    cloud_colour = high_rgb * (1.0 - low) + low_rgb * low
+    image = background * (1.0 - opacity) + cloud_colour * opacity
+    return np.clip(image, 0.0, 1.0)
+
 
 def day_weight(
     sun_zenith: np.ndarray,
@@ -175,10 +234,22 @@ def compose_day_night_image(scene, sensor: str, *, day_composite: str = "true_co
 
     day_rgb = _enhanced_rgb(scene, day_composite)
 
-    # Pick the first night source that is actually present in the scene.
+    # Preferred night side: GeoColor-style from the 3.9 um / window IR pair.
     night_image = None
     used_night = None
-    for name in night_source_names(sensor, scene.keys()):
+    pair = NIGHT_PAIRS.get(sensor)
+    if pair:
+        try:
+            shortwave = np.asarray(scene[pair[0]].values, dtype="float64")
+            window = np.asarray(scene[pair[1]].values, dtype="float64")
+        except KeyError:
+            pass
+        else:
+            night_image = geocolor_night_rgb(shortwave, window)
+            used_night = f"geocolor({pair[0]}-{pair[1]})"
+
+    # Otherwise fall back to a ready-made composite or a single grey band.
+    for name in [] if night_image is not None else night_source_names(sensor, scene.keys()):
         try:
             dataset = scene[name]
         except KeyError:

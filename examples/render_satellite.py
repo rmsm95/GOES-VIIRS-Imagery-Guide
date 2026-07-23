@@ -777,12 +777,21 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _has_dataset(scene, name: str) -> bool:
+    """Whether a dataset or composite is present in the scene."""
+    try:
+        scene[name]
+    except KeyError:
+        return False
+    return True
+
+
 def _render_day_night(args, scene, composites, bbox) -> int:
     """Render a day/night True Color image (real color by day, clouds by night)."""
     try:
-        from .day_night import compose_day_night_image, night_source_names
+        from .day_night import NIGHT_PAIRS, compose_day_night_image, night_source_names
     except ImportError:
-        from day_night import compose_day_night_image, night_source_names
+        from day_night import NIGHT_PAIRS, compose_day_night_image, night_source_names
 
     if "true_color" not in composites:
         raise SystemExit(
@@ -794,13 +803,20 @@ def _render_day_night(args, scene, composites, bbox) -> int:
     # Load the daytime composite plus the first night source that actually
     # loads from these files (a channel like C13, or the DNB composite).
     scene.load(["true_color"], generate=True)
-    night_candidates = night_source_names(args.sensor, composites)
-    night_loaded = None
-    for name in night_candidates:
+
+    # GeoColor-style night needs the 3.9 um / window IR pair; load it if present.
+    pair = NIGHT_PAIRS.get(args.sensor, ())
+    for channel in pair:
+        scene.load([channel])
+    if pair and all(_has_dataset(scene, channel) for channel in pair):
+        night_loaded = f"geocolor({pair[0]}-{pair[1]})"
+        night_candidates = list(pair)
+    else:
+        night_candidates = night_source_names(args.sensor, composites)
+        night_loaded = None
+    for name in [] if night_loaded else night_candidates:
         scene.load([name])
-        try:
-            scene[name]
-        except KeyError:
+        if not _has_dataset(scene, name):
             continue
         night_loaded = name
         break
@@ -828,11 +844,12 @@ def _render_day_night(args, scene, composites, bbox) -> int:
         output.parent.mkdir(parents=True, exist_ok=True)
         image.save(str(output))
     else:
-        save_dataset_with_lonlat_grid(
+        save_map(
             output_scene,
             "true_color",
             output,
-            title=args.title or f"{args.sensor.upper()} True Color (Day/Night)",
+            title=args.title
+            or f"{args.sensor.upper()} - True Color (Day/Night)",
             image=image,
         )
     print(f"Image created: {output.resolve()}")
