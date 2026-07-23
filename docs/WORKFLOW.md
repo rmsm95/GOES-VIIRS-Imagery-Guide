@@ -1,74 +1,91 @@
-# Fluxo recomendado
+# Recommended workflow
 
-## 1. Visualizar primeiro
+## 1. Preview first
 
-Use o [visualizador GOES no Google Earth Engine](https://ruimota16.users.earthengine.app/view/testapp) para escolher:
+Use the [GOES viewer in Google Earth Engine](https://ruimota16.users.earthengine.app/view/testapp) to inspect:
 
-- GOES-18 ou GOES-19;
-- Full Disk ou Mesoscale;
-- data e hora UTC;
-- visualização ou produto.
+- GOES-18 or GOES-19;
+- Full Disk or Mesoscale source coverage;
+- UTC date and time;
+- visualization or product.
 
-O objetivo é confirmar a área, hora e fenómeno antes de descarregar ficheiros grandes.
+The viewer is still being tested and developed. Its purpose is to confirm the area, time, and phenomenon before downloading large files.
 
-## 2. Descarregar apenas o necessário
+## 2. Download only what you need
 
-Abra o [GOES & JPSS Data Downloader](https://rmsm95.github.io/GOES-NESDIS_downlaoder/).
+Open the [GOES & JPSS Data Downloader](https://rmsm95.github.io/GOES-NESDIS_downlaoder/).
 
-Para GOES:
+For GOES:
 
-- selecione o mesmo satélite, domínio, data e hora;
-- descarregue todos os canais exigidos pelo RGB;
-- confirme que os nomes têm o mesmo instante de início (`_s...`).
+- select the same satellite, source coverage, date, and hour;
+- download every channel required by the RGB;
+- confirm that filenames have the same scan start time (`_s...`).
 
-Para VIIRS:
+For VIIRS:
 
-- escolha Suomi NPP, NOAA-20 ou NOAA-21;
-- descarregue as bandas espectrais necessárias;
-- acrescente a geolocalização correspondente.
+- choose Suomi NPP, NOAA-20, or NOAA-21;
+- download the required spectral bands;
+- add the matching geolocation files.
 
-## 3. Geolocalização VIIRS
+## 3. Define the output domain
 
-Os dados VIIRS SDR são swaths: as coordenadas não estão necessariamente dentro do mesmo ficheiro da banda.
+The user must enter the geographic limits. The code does not choose a region automatically:
 
-Para dados recentes, use preferencialmente:
+```text
+--domain MIN_LON MIN_LAT MAX_LON MAX_LAT
+```
 
-- `GITCO`: geolocalização corrigida pelo terreno para bandas I;
-- `GMTCO`: geolocalização corrigida pelo terreno para bandas M;
-- `GDNBO`: geolocalização da Day/Night Band.
+For example, a box around Shishaldin can be entered as:
 
-Desde 24 de fevereiro de 2025, a NOAA direciona os utilizadores para geolocalização corrigida pelo terreno (`GITCO`/`GMTCO`) na distribuição operacional. Consulte o [aviso NOAA CLASS](https://www.class.noaa.gov/search/VIIRS_SDR).
+```bash
+--domain -166 54 -162 56
+```
 
-Mantenha os ficheiros da banda e da geolocalização da mesma passagem no mesmo diretório. O leitor `viirs_sdr` do Satpy associa-os através dos metadados.
+Change these four values for every study area. Omit `--domain` only when you want the complete extent contained in the source file.
 
-## 4. Confirmar composites disponíveis
+## 4. Include VIIRS geolocation
 
-Antes de renderizar:
+VIIRS SDR data consists of swaths. Coordinates are not necessarily stored in the same file as the spectral band.
+
+For recent data, prefer:
+
+- `GITCO`: terrain-corrected geolocation for I bands;
+- `GMTCO`: terrain-corrected geolocation for M bands;
+- `GDNBO`: Day/Night Band geolocation.
+
+NOAA directs users toward terrain-corrected `GITCO` and `GMTCO` geolocation for operational distribution. See the [NOAA CLASS VIIRS SDR page](https://www.class.noaa.gov/search/VIIRS_SDR).
+
+Keep the band and geolocation files from the same pass in one directory. Satpy's `viirs_sdr` reader associates them through metadata.
+
+## 5. Check available composites
+
+Before rendering:
 
 ```bash
 python examples/render_satellite.py \
   --sensor viirs \
-  --files "dados/viirs/*.h5" \
+  --files "data/viirs/*.h5" \
   --list-composites
 ```
 
-Se um RGB não aparecer, falta pelo menos uma banda, geolocalização ou ficheiro auxiliar.
+If an RGB is absent, at least one required band, geolocation file, or auxiliary file is missing.
 
-## 5. Renderizar e validar
+## 6. Render and validate
 
 ```bash
 python examples/render_satellite.py \
   --sensor viirs \
-  --files "dados/viirs/*.h5" \
+  --files "data/viirs/*.h5" \
   --composite true_color \
+  --domain -166 54 -162 56 \
   --output output/viirs_true_color.png
 ```
 
-Valide:
+Validate:
 
-- data e hora UTC;
-- satélite e sensor;
-- extensão geográfica;
-- presença de linhas, deslocamentos ou áreas sem dados;
-- significado físico das cores;
-- unidades e realces utilizados.
+- UTC date and time;
+- satellite and sensor;
+- geographic extent;
+- scan lines, offsets, or missing areas;
+- physical meaning of the colors;
+- units and enhancements.
