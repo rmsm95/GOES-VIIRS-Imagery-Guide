@@ -130,7 +130,11 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     scene.load([composite], generate=True)
-    output_scene = scene.resample(args.area) if args.area else scene
+    output_scene = (
+        scene.resample(args.area)
+        if args.area
+        else scene.resample(resampler="native")
+    )
 
     output = Path(args.output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
