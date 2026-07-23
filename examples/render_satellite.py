@@ -408,6 +408,109 @@ def save_lonlat_map(
     return output_path
 
 
+def save_band_map(
+    scene,
+    dataset_name: str,
+    output: str | Path,
+    *,
+    title: str | None = None,
+    time_label: str | None = None,
+    cmap: str = "gray_r",
+    vmin: float | None = None,
+    vmax: float | None = None,
+    colorbar_label: str = "Brightness Temperature (K)",
+    dpi: int = PLAIN_FIGURE_DPI,
+    coastline_resolution: str = "10m",
+    mark_shishaldin: bool = True,
+) -> Path:
+    """Save one band (not an RGB) as a map with a colour bar.
+
+    Used for single-channel views such as the 10.3 um window in grey scale, or
+    a brightness-temperature difference with a colour scale.
+    """
+    output_path = Path(output).expanduser()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        from cartopy import config as cartopy_config
+        import matplotlib.pyplot as plt
+        from matplotlib.ticker import FuncFormatter
+        import numpy as np
+    except ImportError as exc:
+        raise SystemExit(
+            "Map plotting dependencies are missing. Run: "
+            "python -m pip install -r requirements.txt"
+        ) from exc
+
+    cartopy_data_dir = Path(
+        os.environ.get("CARTOPY_DATA_DIR", output_path.parent / ".cartopy")
+    )
+    cartopy_data_dir.mkdir(parents=True, exist_ok=True)
+    cartopy_config["data_dir"] = str(cartopy_data_dir)
+
+    dataset = scene[dataset_name]
+    area = dataset.attrs.get("area")
+    if area is None or not area.crs.is_geographic:
+        raise ValueError("save_band_map needs a dataset on a regular lon/lat area.")
+
+    min_lon, min_lat, max_lon, max_lat = area.area_extent
+    values = np.asarray(dataset.values, dtype="float64")
+    if time_label is None:
+        time_label = scene_time_label(scene, dataset_name)
+
+    span_lon = max(max_lon - min_lon, 1e-6)
+    span_lat = max(max_lat - min_lat, 1e-6)
+    figure_width = PLAIN_FIGURE_WIDTH_INCHES
+    figure_height = max(
+        3.0, min(11.0, figure_width * span_lat / span_lon * PLAIN_FIGURE_HEIGHT_FACTOR)
+    )
+
+    figure, axis = plt.subplots(figsize=(figure_width, figure_height))
+    mesh = axis.imshow(
+        values,
+        extent=(min_lon, max_lon, min_lat, max_lat),
+        origin="upper",
+        aspect="auto",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        zorder=0,
+    )
+    axis.grid(color="white", alpha=0.45, ls="--", lw=0.5, zorder=1)
+    for line_x, line_y in coastline_segments(
+        (min_lon, min_lat, max_lon, max_lat), coastline_resolution
+    ):
+        axis.plot(line_x, line_y, color="red", lw=0.8, zorder=4)
+    if (
+        mark_shishaldin
+        and min_lon <= SHISHALDIN_LON <= max_lon
+        and min_lat <= SHISHALDIN_LAT <= max_lat
+    ):
+        axis.plot(
+            SHISHALDIN_LON, SHISHALDIN_LAT, "^",
+            color="red", markersize=10, zorder=6,
+        )
+
+    axis.set_xlim(min_lon, max_lon)
+    axis.set_ylim(min_lat, max_lat)
+    axis.xaxis.set_major_formatter(FuncFormatter(_format_longitude))
+    axis.yaxis.set_major_formatter(FuncFormatter(_format_latitude))
+    axis.set_xlabel("Longitude")
+    axis.set_ylabel("Latitude")
+    if title:
+        axis.set_title(title, loc="left", fontsize=11)
+    if time_label:
+        axis.set_title(time_label, loc="right", fontsize=11)
+
+    bar = figure.colorbar(mesh, ax=axis, pad=0.01)
+    bar.set_label(colorbar_label)
+
+    figure.tight_layout()
+    figure.savefig(output_path, dpi=dpi)
+    plt.close(figure)
+    return output_path
+
+
 def scene_time_label(scene, composite: str) -> str:
     """UTC timestamp of the scan, formatted like '03 October 2023 19:00 UTC'."""
     start = scene[composite].attrs.get("start_time")

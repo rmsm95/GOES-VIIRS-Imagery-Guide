@@ -1,0 +1,31 @@
+name: goes-viirs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # --- reading GOES ABI / GLM and VIIRS SDR -------------------------------
+  - satpy>=0.60,<0.61
+  - pyresample>=1.34
+  - netcdf4>=1.7
+  - h5py>=3.12
+  - h5netcdf>=1.3
+  - xarray>=2024.1
+  - dask>=2024.1
+  - numpy>=1.26
+  - scipy>=1.11
+  # --- composites, enhancements, corrections -------------------------------
+  - pyspectral>=0.13          # Rayleigh correction for True Color
+  - pyorbital>=1.8            # solar geometry for the day/night blend
+  - trollimage>=1.27
+  - pillow>=11
+  # --- maps and figures ----------------------------------------------------
+  - matplotlib>=3.10,<4
+  - cartopy>=0.25,<0.26       # Natural Earth coastlines
+  - shapely>=2.0
+  # --- remote access to the public NOAA buckets ---------------------------
+  - gcsfs>=2025.0
+  - s3fs>=2024.1
+  - requests>=2.31
+  # --- notebooks -----------------------------------------------------------
+  - jupyterlab>=4.4,<5
+  - ipykernel>=6.29,<7
