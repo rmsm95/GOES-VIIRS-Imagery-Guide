@@ -1,12 +1,12 @@
-# Exemplos executáveis
+# Runnable examples
 
-Os três exemplos cobrem situações diferentes:
+The three scripts cover different situations:
 
-| Exemplo | Dados | Resultado |
+| Example | Data | Result |
 |---|---|---|
-| `demo_goes_true_color.py` | Descarrega automaticamente um conjunto GOES ABI oficial do Satpy | `output/demo_goes_true_color.png` |
-| `demo_viirs_true_color.py` | Descarrega automaticamente uma passagem Suomi NPP com bandas I/M e geolocalização | `output/demo_viirs_true_color.png` |
-| `render_satellite.py` | Usa os seus próprios ficheiros NOAA | PNG com o composite escolhido |
+| `demo_goes_true_color.py` | Automatically downloads an official Satpy GOES ABI demo dataset | `output/demo_goes_true_color.png` |
+| `demo_viirs_true_color.py` | Automatically downloads a Suomi NPP pass with I/M bands and geolocation | `output/demo_viirs_true_color.png` |
+| `render_satellite.py` | Uses your own NOAA files | A PNG with the selected composite |
 
 ## Demo 1 — GOES True Color
 
@@ -14,21 +14,24 @@ Os três exemplos cobrem situações diferentes:
 python examples/demo_goes_true_color.py
 ```
 
-O exemplo:
+The example:
 
-1. descarrega dados GOES-16 ABI de 14 de março de 2019;
-2. abre os ficheiros com o leitor `abi_l1b`;
-3. cria `true_color` ou `true_color_raw`, conforme a versão do Satpy;
-4. reamostra os canais para uma grelha comum;
-5. grava `output/demo_goes_true_color.png`.
+1. downloads GOES-16 ABI data from March 14, 2019;
+2. opens the files with the `abi_l1b` reader;
+3. creates `true_color` or `true_color_raw`, depending on the Satpy version;
+4. resamples channels to a common grid;
+5. writes `output/demo_goes_true_color.png`.
 
-Pode escolher outros diretórios:
+You can select other directories and enter your own domain:
 
 ```bash
 python examples/demo_goes_true_color.py \
   --data-dir data/goes-cyclone \
+  --domain -102 25 -84 38 \
   --output output/goes_cyclone.png
 ```
+
+The demo source is CONUS. The four domain values must intersect that source.
 
 ## Demo 2 — Suomi NPP VIIRS True Color
 
@@ -36,71 +39,99 @@ python examples/demo_goes_true_color.py \
 python examples/demo_viirs_true_color.py
 ```
 
-O exemplo descarrega apenas uma granule e os canais necessários:
+The example downloads one granule and the required channels:
 
-- `M03`, `M04`, `M05`: azul, verde e vermelho;
-- `I01`, `I02`: detalhe de maior resolução para o ratio sharpening;
-- geolocalização corrigida pelo terreno incluída pelo conjunto de demonstração.
+- `M03`, `M04`, `M05`: blue, green, and red;
+- `I01`, `I02`: higher-resolution detail for ratio sharpening;
+- terrain-corrected geolocation included with the demo dataset.
 
-Depois combina as bandas com o leitor `viirs_sdr`, reamostra as resoluções I/M e grava `output/demo_viirs_true_color.png`.
+It then combines the bands with the `viirs_sdr` reader, resamples I/M resolutions, and writes `output/demo_viirs_true_color.png`.
 
-## Exemplo 3 — ficheiros descarregados pelo utilizador
+The user can crop the result by entering longitude and latitude limits:
 
-### GOES True Color
+```bash
+python examples/demo_viirs_true_color.py \
+  --domain -95 26 -80 36 \
+  --output output/viirs_domain.png
+```
 
-No downloader, escolha os canais `C01`, `C02` e `C03` da mesma hora e domínio:
+The entered box must intersect the downloaded demo swath.
+
+## Example 3 — user-downloaded files
+
+### GOES True Color for a user-defined Shishaldin domain
+
+In the downloader, select `C01`, `C02`, and `C03` from the same scan. Then enter the domain as `MIN_LON MIN_LAT MAX_LON MAX_LAT`:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/OR_ABI-L1b-RadF-M6C0[123]*.nc" \
+  --files "data/goes/OR_ABI-L1b-RadF-M6C0[123]*.nc" \
   --composite true_color \
-  --output output/meu_goes_true_color.png
+  --domain -166 54 -162 56 \
+  --output output/goes_shishaldin_true_color.png
+```
+
+The Shishaldin values are an example typed by the user, not a named or automatic preset.
+
+### GOES Full Disk
+
+Use ABI `F` source files and omit `--domain`:
+
+```bash
+python examples/render_satellite.py \
+  --sensor goes \
+  --files "data/goes/OR_ABI-L1b-RadF-M6C0[123]*.nc" \
+  --composite true_color \
+  --output output/goes_full_disk_true_color.png
 ```
 
 ### GOES Day Land Cloud
 
-Descarregue `C02`, `C03` e `C05`:
+Download `C02`, `C03`, and `C05`:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/OR_ABI-L1b-RadF-M6C0[235]*.nc" \
+  --files "data/goes/OR_ABI-L1b-RadF-M6C0[235]*.nc" \
   --composite natural_color \
+  --domain -166 54 -162 56 \
   --output output/goes_day_land_cloud.png
 ```
 
 ### GOES Nighttime Microphysics
 
-Descarregue `C07`, `C13` e `C15`:
+Download `C07`, `C13`, and `C15`:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
-  --files "dados/goes/*.nc" \
+  --files "data/goes/*.nc" \
   --composite night_microphysics \
+  --domain -166 54 -162 56 \
   --output output/goes_night_microphysics.png
 ```
 
 ### VIIRS True Color
 
-Junte as bandas e a geolocalização da mesma passagem:
+Keep bands and matching geolocation from the same pass together:
 
 ```bash
 python examples/render_satellite.py \
   --sensor viirs \
-  --files "dados/viirs/*.h5" \
+  --files "data/viirs/*.h5" \
   --composite true_color \
-  --output output/meu_viirs_true_color.png
+  --domain -166 54 -162 56 \
+  --output output/viirs_shishaldin_true_color.png
 ```
 
-Se o composite não aparecer:
+If the composite is absent:
 
 ```bash
 python examples/render_satellite.py \
   --sensor viirs \
-  --files "dados/viirs/*.h5" \
+  --files "data/viirs/*.h5" \
   --list-composites
 ```
 
-Isto permite distinguir entre um nome de composite incorreto e a ausência de bandas ou geolocalização.
+This distinguishes an incorrect composite name from missing bands or geolocation.

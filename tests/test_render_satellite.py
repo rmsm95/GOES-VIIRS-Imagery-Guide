@@ -2,7 +2,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from examples.render_satellite import expand_inputs, has_viirs_geolocation
+from examples.render_satellite import (
+    expand_inputs,
+    has_viirs_geolocation,
+    resolve_bbox,
+    validate_bbox,
+)
 
 
 class InputExpansionTests(TestCase):
@@ -38,3 +43,16 @@ class InputExpansionTests(TestCase):
 
         self.assertTrue(has_viirs_geolocation(files))
         self.assertFalse(has_viirs_geolocation(files[:1]))
+
+
+class DomainTests(TestCase):
+    def test_missing_domain_keeps_source_extent(self):
+        self.assertIsNone(resolve_bbox(None))
+
+    def test_user_domain_is_returned(self):
+        custom = (-30, 35, -20, 43)
+        self.assertEqual(resolve_bbox(custom), custom)
+
+    def test_domain_order_is_validated(self):
+        with self.assertRaisesRegex(ValueError, "invalid longitude limits"):
+            validate_bbox((10, 30, -10, 40))
