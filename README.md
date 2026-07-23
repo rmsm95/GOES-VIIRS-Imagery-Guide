@@ -37,6 +37,8 @@ Download ABI channels `C01`, `C02`, and `C03` from the same observation. Enter y
 MIN_LON MIN_LAT MAX_LON MAX_LAT
 ```
 
+Enter all four values in decimal degrees, including `.0` for whole degrees.
+
 The following example uses a user-defined box around Shishaldin:
 
 ```bash
@@ -44,7 +46,7 @@ python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/*.nc" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/goes_shishaldin_true_color.png
 ```
 
@@ -63,7 +65,7 @@ python examples/render_satellite.py \
   --sensor viirs \
   --files "data/viirs/*.h5" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/viirs_shishaldin_true_color.png
 ```
 
@@ -117,6 +119,27 @@ python examples/demo_viirs_true_color.py
 
 Demo downloads can be several hundred megabytes. Files are stored under `data/demo-*` and are excluded from Git.
 
+## JupyterLab tutorials
+
+The notebooks are executed examples that keep the explanation, editable code,
+and the exact resulting satellite image together:
+
+- [GOES ABI True Color notebook](notebooks/01_GOES_true_color.ipynb)
+- [VIIRS True Color notebook](notebooks/02_VIIRS_true_color.ipynb)
+- [JupyterLab setup and input guide](notebooks/README.md)
+
+Install and start JupyterLab from the repository root:
+
+```bash
+python -m pip install -r requirements-notebooks.txt
+python -m jupyter lab
+```
+
+GitHub displays the saved GOES and VIIRS results without requiring JupyterLab.
+When rerun locally, each notebook downloads public demonstration data, uses a
+decimal `DOMAIN = (MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)`, and regenerates the PNG.
+Separate instructions show how to replace the demo data with a Shishaldin pass.
+
 ## Repository structure
 
 ```text
@@ -130,8 +153,13 @@ Demo downloads can be several hundred megabytes. Files are stored under `data/de
 │   ├── demo_goes_true_color.py
 │   ├── demo_viirs_true_color.py
 │   └── render_satellite.py
+├── notebooks/
+│   ├── README.md
+│   ├── 01_GOES_true_color.ipynb
+│   └── 02_VIIRS_true_color.ipynb
 ├── tests/
 │   └── test_render_satellite.py
+├── requirements-notebooks.txt
 └── requirements.txt
 ```
 

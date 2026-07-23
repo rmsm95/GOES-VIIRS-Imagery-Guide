@@ -35,10 +35,12 @@ The user must enter the geographic limits. The code does not choose a region aut
 --domain MIN_LON MIN_LAT MAX_LON MAX_LAT
 ```
 
+Enter all four values in decimal degrees, including `.0` for whole degrees.
+
 For example, a box around Shishaldin can be entered as:
 
 ```bash
---domain -166 54 -162 56
+--domain -166.0 54.0 -162.0 56.0
 ```
 
 Change these four values for every study area. Omit `--domain` only when you want the complete extent contained in the source file.
@@ -77,7 +79,7 @@ python examples/render_satellite.py \
   --sensor viirs \
   --files "data/viirs/*.h5" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/viirs_true_color.png
 ```
 

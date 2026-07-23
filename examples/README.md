@@ -27,7 +27,7 @@ You can select other directories and enter your own domain:
 ```bash
 python examples/demo_goes_true_color.py \
   --data-dir data/goes-cyclone \
-  --domain -102 25 -84 38 \
+  --domain -102.0 25.0 -84.0 38.0 \
   --output output/goes_cyclone.png
 ```
 
@@ -51,7 +51,7 @@ The user can crop the result by entering longitude and latitude limits:
 
 ```bash
 python examples/demo_viirs_true_color.py \
-  --domain -95 26 -80 36 \
+  --domain -95.0 26.0 -80.0 36.0 \
   --output output/viirs_domain.png
 ```
 
@@ -61,14 +61,16 @@ The entered box must intersect the downloaded demo swath.
 
 ### GOES True Color for a user-defined Shishaldin domain
 
-In the downloader, select `C01`, `C02`, and `C03` from the same scan. Then enter the domain as `MIN_LON MIN_LAT MAX_LON MAX_LAT`:
+In the downloader, select `C01`, `C02`, and `C03` from the same scan. Then
+enter the domain as `MIN_LON MIN_LAT MAX_LON MAX_LAT`. Write every value in
+decimal degrees, including `.0` for whole degrees:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/OR_ABI-L1b-RadF-M6C0[123]*.nc" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/goes_shishaldin_true_color.png
 ```
 
@@ -95,7 +97,7 @@ python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/OR_ABI-L1b-RadF-M6C0[235]*.nc" \
   --composite natural_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/goes_day_land_cloud.png
 ```
 
@@ -108,7 +110,7 @@ python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/*.nc" \
   --composite night_microphysics \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/goes_night_microphysics.png
 ```
 
@@ -121,7 +123,7 @@ python examples/render_satellite.py \
   --sensor viirs \
   --files "data/viirs/*.h5" \
   --composite true_color \
-  --domain -166 54 -162 56 \
+  --domain -166.0 54.0 -162.0 56.0 \
   --output output/viirs_shishaldin_true_color.png
 ```
 

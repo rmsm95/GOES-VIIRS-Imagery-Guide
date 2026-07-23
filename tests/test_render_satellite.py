@@ -50,9 +50,9 @@ class DomainTests(TestCase):
         self.assertIsNone(resolve_bbox(None))
 
     def test_user_domain_is_returned(self):
-        custom = (-30, 35, -20, 43)
+        custom = (-166.5, 54.0, -162.0, 56.5)
         self.assertEqual(resolve_bbox(custom), custom)
 
     def test_domain_order_is_validated(self):
         with self.assertRaisesRegex(ValueError, "invalid longitude limits"):
-            validate_bbox((10, 30, -10, 40))
+            validate_bbox((10.0, 30.0, -10.0, 40.0))
