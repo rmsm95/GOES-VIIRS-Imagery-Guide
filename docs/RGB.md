@@ -60,6 +60,43 @@ This is a daytime composite and depends on sunlight. Complete processing can als
 
 Source: [NOAA/CIMSS Natural True Color Quick Guide](https://www.star.nesdis.noaa.gov/GOES/documents/ABIQuickGuide_CIMSSRGB_v2.pdf).
 
+## Day/Night True Color
+
+Plain True Color needs sunlight, so it is black at night. The `day_night`
+composite keeps real color where the sun is up and shows clouds where it is
+down, blended smoothly through twilight using the solar zenith angle at each
+pixel:
+
+```text
+day pixels    -> true_color RGB
+twilight      -> linear mix of day and night
+night pixels  -> grayscale clouds from a thermal / low-light source
+```
+
+The night source depends on the sensor:
+
+- **GOES ABI**: the clean infrared window band `C13` (10.3 µm). Cold cloud tops
+  are drawn bright and warm surface dark, so clouds remain visible in the dark.
+  Requires `C01`, `C02`, `C03` (for the day side) and `C13` from one scan.
+- **VIIRS**: the Day/Night Band (`dynamic_dnb`) when the DNB band (`SVDNB`) and
+  its geolocation (`GDNBO`) are present, showing moonlit clouds and city lights.
+  If the DNB is missing it falls back to the infrared window band (`I05` or
+  `M15`). Requires `M03`, `M04`, `M05` (day side) plus a night band.
+
+Run it with:
+
+```bash
+python examples/render_satellite.py \
+  --sensor goes \
+  --files "data/goes/*.nc" \
+  --composite day_night \
+  --domain shishaldin \
+  --output output/goes_day_night.png
+```
+
+The transition band defaults to solar zenith 85°–91° and the infrared cloud
+stretch to 190–300 K; both are constants at the top of `examples/day_night.py`.
+
 ## GOES ABI Day Land Cloud / Natural Color
 
 This recipe uses:
@@ -177,7 +214,7 @@ This is false color: displayed colors do not match human vision. The 1.61 µm ba
 - Combining reflectance and temperature without the correct recipe.
 - Ignoring fill values or invalid pixels.
 - Treating Full Disk, CONUS, and Mesoscale as the same grid.
-- Applying True Color at night.
+- Applying plain True Color at night (use the `day_night` composite instead).
 - Comparing images that use different limits or gamma.
 - Entering latitude before longitude in `--domain`.
 - Treating the SO₂ RGB as a quantitative gas retrieval.

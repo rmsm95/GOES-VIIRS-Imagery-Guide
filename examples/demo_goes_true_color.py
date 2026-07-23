@@ -10,14 +10,14 @@ try:
     from .render_satellite import (
         add_domain_argument,
         crop_and_resample_scene,
-        resolve_bbox,
+        resolve_domain_tokens,
         save_dataset_with_lonlat_grid,
     )
 except ImportError:
     from render_satellite import (
         add_domain_argument,
         crop_and_resample_scene,
-        resolve_bbox,
+        resolve_domain_tokens,
         save_dataset_with_lonlat_grid,
     )
 
@@ -42,7 +42,7 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     try:
-        resolve_bbox(args.domain)
+        bbox = resolve_domain_tokens(args.domain)
     except ValueError as exc:
         parser.error(str(exc))
 
@@ -71,7 +71,7 @@ def main() -> int:
     scene.load([composite], generate=True)
     resampled = crop_and_resample_scene(
         scene,
-        domain=args.domain,
+        domain=bbox,
     )
 
     output = Path(args.output)

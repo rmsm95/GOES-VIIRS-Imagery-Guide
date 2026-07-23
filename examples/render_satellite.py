@@ -11,6 +11,11 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+try:
+    from .domains import DOMAINS, list_domains
+except ImportError:
+    from domains import DOMAINS, list_domains
+
 
 SUPPORTED_SUFFIXES = {".nc", ".nc4", ".h5", ".hdf5"}
 DEFAULT_DOMAIN_RESOLUTION = 0.02
@@ -19,6 +24,9 @@ READERS = {
     "viirs": "viirs_sdr",
 }
 VIIRS_GEO_PREFIXES = ("GITCO_", "GMTCO_", "GDNBO_", "GIMGO_", "GMODO_")
+
+# Composite names that trigger the day/night True Color blend (see day_night.py).
+DAY_NIGHT_COMPOSITES = {"day_night", "true_color_night", "true_color_day_night"}
 
 
 def expand_inputs(values: Iterable[str]) -> list[str]:
@@ -82,8 +90,37 @@ def validate_bbox(values: Iterable[float]) -> tuple[float, float, float, float]:
 def resolve_bbox(
     domain: Iterable[float] | None,
 ) -> tuple[float, float, float, float] | None:
-    """Validate a user-provided geographic domain."""
+    """Validate a user-provided geographic domain (four numbers)."""
     return validate_bbox(domain) if domain is not None else None
+
+
+def resolve_domain_tokens(
+    tokens: Iterable[str] | None,
+) -> tuple[float, float, float, float] | None:
+    """Resolve ``--domain`` input that is a named domain OR four numbers.
+
+    Accepts either a single name from ``domains.py`` (for example
+    ``shishaldin``) or four decimal-degree values ``MIN_LON MIN_LAT MAX_LON
+    MAX_LAT``. Returns ``None`` when nothing was supplied.
+    """
+    if tokens is None:
+        return None
+    tokens = list(tokens)
+    if len(tokens) == 1:
+        name = tokens[0]
+        if name in DOMAINS:
+            return validate_bbox(DOMAINS[name])
+        known = ", ".join(sorted(DOMAINS)) or "none defined"
+        raise ValueError(
+            f"unknown domain '{name}'. Named domains: {known}. "
+            "Or pass four numbers: MIN_LON MIN_LAT MAX_LON MAX_LAT."
+        )
+    if len(tokens) == 4:
+        return validate_bbox([float(value) for value in tokens])
+    raise ValueError(
+        "--domain expects a single domain name or four numbers "
+        "MIN_LON MIN_LAT MAX_LON MAX_LAT."
+    )
 
 
 def create_lonlat_area(
@@ -116,16 +153,16 @@ def create_lonlat_area(
 
 
 def add_domain_argument(parser: argparse.ArgumentParser) -> None:
-    """Add a geographic domain that must be entered by the user."""
+    """Add the geographic domain: a named domain or four numbers."""
     parser.add_argument(
         "--domain",
-        nargs=4,
-        type=float,
-        metavar=("MIN_LON", "MIN_LAT", "MAX_LON", "MAX_LAT"),
+        nargs="+",
+        metavar="DOMAIN",
         help=(
-            "User-defined crop in decimal degrees and longitude/latitude order: "
-            "MIN_LON MIN_LAT MAX_LON MAX_LAT (for example, "
-            "-166.0 54.0 -162.0 56.0). Omit it to keep the source extent."
+            "Named domain from domains.py (for example 'shishaldin'), or four "
+            "decimal-degree values MIN_LON MIN_LAT MAX_LON MAX_LAT (for example "
+            "-166.0 54.0 -162.0 56.0). Use --list-domains to see the names. "
+            "Omit it to keep the full source extent."
         ),
     )
 
@@ -136,24 +173,44 @@ def crop_and_resample_scene(
     domain: Iterable[float] | None,
     area: str | None = None,
     resolution: float = DEFAULT_DOMAIN_RESOLUTION,
+    native_projection: bool = False,
 ):
-    """Crop geographically and put datasets on a common output grid."""
+    """Crop to a domain and put the result on the output grid.
+
+    ``domain`` is an already-resolved bounding box ``(min_lon, min_lat,
+    max_lon, max_lat)`` or ``None``.
+
+    By default a cropped scene is placed on a regular (flat) WGS84 lon/lat
+    grid, so every image uses the same rectangular projection with straight
+    gridlines, whatever the sensor or crop.
+
+    * ``area`` — resample to an explicit Satpy area (advanced override).
+    * ``native_projection`` — keep the satellite's own projection instead
+      (geostationary for GOES). Ignored for VIIRS, an orbital swath with no
+      single fixed projection.
+    """
     bounds = resolve_bbox(domain)
-    working_scene = scene
-    if bounds:
-        try:
-            working_scene = scene.crop(ll_bbox=bounds)
-        except NotImplementedError:
-            # SwathDefinition sources such as VIIRS cannot always be sliced
-            # geographically before resampling. The target area still limits
-            # the output to the exact user-defined domain.
-            working_scene = scene
+
     if area:
-        return working_scene.resample(area)
-    if bounds:
-        lonlat_area = create_lonlat_area(bounds, resolution=resolution)
-        return working_scene.resample(lonlat_area)
-    return working_scene.resample(resampler="native")
+        return scene.resample(area)
+
+    if bounds is None:
+        # No crop: keep every dataset on its native grid.
+        return scene.resample(resampler="native")
+
+    if native_projection:
+        try:
+            # Geostationary sources (GOES ABI) crop in-place and keep their
+            # native projection; only the extent shrinks to the domain.
+            cropped = scene.crop(ll_bbox=bounds)
+            return cropped.resample(resampler="native")
+        except (NotImplementedError, KeyError):
+            # Swath sources (VIIRS) fall through to the regular lon/lat grid.
+            pass
+
+    # Default: regular flat lon/lat grid limited to the user domain.
+    lonlat_area = create_lonlat_area(bounds, resolution=resolution)
+    return scene.resample(lonlat_area)
 
 
 def resample_to_max_size(scene, composite: str, *, max_size: int = 1600):
@@ -205,8 +262,14 @@ def save_dataset_with_lonlat_grid(
     title: str | None = None,
     dpi: int = 150,
     coastline_resolution: str = "10m",
+    image=None,
 ) -> Path:
-    """Save a dataset with projected lon/lat grid lines and coastlines."""
+    """Save a dataset with projected lon/lat grid lines and coastlines.
+
+    ``image`` may be a ready PIL image (for example a day/night blend). When
+    given it is drawn as-is with no Satpy enhancement, and ``composite`` is
+    used only to read the area and geometry.
+    """
     output_path = Path(output).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -216,6 +279,7 @@ def save_dataset_with_lonlat_grid(
         import matplotlib.pyplot as plt
         from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
         from matplotlib.ticker import MaxNLocator
+        import numpy as np
         from satpy.enhancements.enhancer import get_enhanced_image
     except ImportError as exc:
         raise SystemExit(
@@ -236,7 +300,7 @@ def save_dataset_with_lonlat_grid(
             f"Dataset '{composite}' has no area information for a longitude/latitude grid."
         )
 
-    enhanced = get_enhanced_image(dataset).pil_image()
+    enhanced = image if image is not None else get_enhanced_image(dataset).pil_image()
     projection = area.to_cartopy_crs()
     width, height = enhanced.size
     aspect = width / max(height, 1)
@@ -289,22 +353,62 @@ def save_dataset_with_lonlat_grid(
             origin="upper",
             zorder=0,
         )
-        axis.set_xlim(projection.bounds[0], projection.bounds[1])
-        axis.set_ylim(projection.bounds[2], projection.bounds[3])
-        grid = axis.gridlines(
+        x_lo, x_hi = projection.bounds[0], projection.bounds[1]
+        y_lo, y_hi = projection.bounds[2], projection.bounds[3]
+        axis.set_xlim(x_lo, x_hi)
+        axis.set_ylim(y_lo, y_hi)
+
+        # Dashed lon/lat graticule, curved in the satellite projection. Cartopy
+        # cannot cleanly label a skewed geostationary frame, so draw the lines
+        # unlabeled and place labels on the edges manually below.
+        axis.gridlines(
             crs=ccrs.PlateCarree(),
-            draw_labels=True,
+            draw_labels=False,
             linewidth=0.65,
             color="white",
             alpha=0.8,
             linestyle="--",
-            x_inline=False,
-            y_inline=False,
         )
-        grid.top_labels = False
-        grid.right_labels = False
-        grid.xlabel_style = {"size": 9}
-        grid.ylabel_style = {"size": 9}
+
+        # Latitude labels where nice parallels cross the left edge; longitude
+        # labels where nice meridians cross the bottom edge.
+        geodetic = ccrs.PlateCarree()
+        samples = 400
+        left_y = np.linspace(y_lo, y_hi, samples)
+        left_lat = geodetic.transform_points(
+            projection, np.full(samples, x_lo), left_y
+        )[:, 1]
+        bottom_x = np.linspace(x_lo, x_hi, samples)
+        bottom_lon = geodetic.transform_points(
+            projection, bottom_x, np.full(samples, y_lo)
+        )[:, 0]
+
+        def _format_lat(value: float) -> str:
+            return f"{abs(value):g}°{'N' if value >= 0 else 'S'}"
+
+        def _format_lon(value: float) -> str:
+            return f"{abs(value):g}°{'E' if value >= 0 else 'W'}"
+
+        lat_order = np.argsort(left_lat)
+        lat_sorted, y_sorted = left_lat[lat_order], left_y[lat_order]
+        lat_values = [
+            value
+            for value in MaxNLocator(nbins=6).tick_values(lat_sorted[0], lat_sorted[-1])
+            if lat_sorted[0] <= value <= lat_sorted[-1]
+        ]
+        axis.set_yticks(np.interp(lat_values, lat_sorted, y_sorted))
+        axis.set_yticklabels([_format_lat(value) for value in lat_values])
+
+        lon_order = np.argsort(bottom_lon)
+        lon_sorted, x_sorted = bottom_lon[lon_order], bottom_x[lon_order]
+        lon_values = [
+            value
+            for value in MaxNLocator(nbins=8).tick_values(lon_sorted[0], lon_sorted[-1])
+            if lon_sorted[0] <= value <= lon_sorted[-1]
+        ]
+        axis.set_xticks(np.interp(lon_values, lon_sorted, x_sorted))
+        axis.set_xticklabels([_format_lon(value) for value in lon_values])
+        axis.tick_params(labelsize=9)
 
     axis.coastlines(
         resolution=coastline_resolution,
@@ -338,17 +442,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Render GOES ABI or VIIRS SDR files as a PNG image."
     )
-    parser.add_argument("--sensor", choices=sorted(READERS), required=True)
+    parser.add_argument("--sensor", choices=sorted(READERS))
     parser.add_argument(
         "--files",
         nargs="+",
-        required=True,
         help="Files, directories, or glob patterns. Quote glob patterns.",
     )
     parser.add_argument(
         "--composite",
         default="true_color",
-        help="Satpy composite name (default: true_color).",
+        help=(
+            "Satpy composite name (default: true_color). Use 'day_night' for a "
+            "True Color image that also shows clouds at night."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -370,6 +476,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--native-projection",
+        action="store_true",
+        help=(
+            "Keep the satellite's own projection (geostationary for GOES) "
+            "instead of the default flat WGS84 lon/lat grid."
+        ),
+    )
+    parser.add_argument(
         "--plain-image",
         action="store_true",
         help="Save without longitude/latitude grid lines or coordinate labels.",
@@ -379,19 +493,34 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List available composites and exit without creating an image.",
     )
+    parser.add_argument(
+        "--list-domains",
+        action="store_true",
+        help="List the named domains from domains.py and exit.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.list_domains:
+        print(list_domains())
+        return 0
+
+    if not args.sensor:
+        parser.error("--sensor is required (choose from goes, viirs).")
+    if not args.files:
+        parser.error("--files is required.")
+
     files = expand_inputs(args.files)
 
     if not files:
         parser.error("No NetCDF/HDF5 files matched --files.")
 
     try:
-        resolve_bbox(args.domain)
+        bbox = resolve_domain_tokens(args.domain)
         if args.resolution <= 0:
             raise ValueError("resolution must be greater than zero decimal degrees")
     except ValueError as exc:
@@ -411,6 +540,9 @@ def main(argv: list[str] | None = None) -> int:
         print("\n".join(composites))
         return 0
 
+    if args.composite in DAY_NIGHT_COMPOSITES:
+        return _render_day_night(args, scene, composites, bbox)
+
     composite = args.composite
     if composite not in composites and composite == "true_color" and "true_color_raw" in composites:
         composite = "true_color_raw"
@@ -426,9 +558,10 @@ def main(argv: list[str] | None = None) -> int:
     scene.load([composite], generate=True)
     output_scene = crop_and_resample_scene(
         scene,
-        domain=args.domain,
+        domain=bbox,
         area=args.area,
         resolution=args.resolution,
+        native_projection=args.native_projection,
     )
 
     output = Path(args.output).expanduser()
@@ -441,6 +574,68 @@ def main(argv: list[str] | None = None) -> int:
             composite,
             output,
             title=f"{args.sensor.upper()} {composite.replace('_', ' ').title()}",
+        )
+    print(f"Image created: {output.resolve()}")
+    return 0
+
+
+def _render_day_night(args, scene, composites, bbox) -> int:
+    """Render a day/night True Color image (real color by day, clouds by night)."""
+    try:
+        from .day_night import compose_day_night_image, night_source_names
+    except ImportError:
+        from day_night import compose_day_night_image, night_source_names
+
+    if "true_color" not in composites:
+        raise SystemExit(
+            "day_night needs the 'true_color' composite, which cannot be built "
+            "from these files. Download the True Color channels first "
+            "(GOES C01/C02/C03, or VIIRS M03/M04/M05)."
+        )
+
+    # Load the daytime composite plus the first night source that actually
+    # loads from these files (a channel like C13, or the DNB composite).
+    scene.load(["true_color"], generate=True)
+    night_candidates = night_source_names(args.sensor, composites)
+    night_loaded = None
+    for name in night_candidates:
+        scene.load([name])
+        try:
+            scene[name]
+        except KeyError:
+            continue
+        night_loaded = name
+        break
+    if night_loaded is None:
+        raise SystemExit(
+            "No night source could be loaded for the day/night blend. Expected "
+            f"one of: {', '.join(night_candidates)}. For GOES download C13; for "
+            "VIIRS download the Day/Night Band (SVDNB + GDNBO) or an infrared "
+            "band (I05 or M15)."
+        )
+
+    output_scene = crop_and_resample_scene(
+        scene,
+        domain=bbox,
+        area=args.area,
+        resolution=args.resolution,
+        native_projection=args.native_projection,
+    )
+
+    image, used_night = compose_day_night_image(output_scene, args.sensor)
+    print(f"Day/night blend: day='true_color', night source='{used_night}'.")
+
+    output = Path(args.output).expanduser()
+    if args.plain_image:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        image.save(str(output))
+    else:
+        save_dataset_with_lonlat_grid(
+            output_scene,
+            "true_color",
+            output,
+            title=f"{args.sensor.upper()} True Color (Day/Night)",
+            image=image,
         )
     print(f"Image created: {output.resolve()}")
     return 0

@@ -7,10 +7,31 @@ There are two separate spatial decisions:
 
 A crop cannot create data that is absent from the source file.
 
-## The domain is always user-defined
+## Two ways to give a domain
 
-The code contains no named geographic presets. Enter four longitude/latitude
-limits in decimal degrees:
+You can pass either a **named domain** or **four numbers**.
+
+### Named domains (shortcut)
+
+`examples/domains.py` holds a small, editable list of named boxes. List them:
+
+```bash
+python examples/render_satellite.py --list-domains
+```
+
+Then use a name instead of typing coordinates:
+
+```text
+--domain shishaldin
+```
+
+These names are only examples — open `examples/domains.py` and add, edit, or
+remove entries for your own study areas. Each entry is
+`"name": (MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)`.
+
+### Raw coordinates
+
+You can always enter four longitude/latitude limits in decimal degrees instead:
 
 ```text
 --domain MIN_LON MIN_LAT MAX_LON MAX_LAT
@@ -110,6 +131,17 @@ python examples/render_satellite.py \
 ```
 
 The crop reduces processing and output image size. It does not reduce bytes already downloaded. Inspect the orbit or granule geolocation first to avoid downloading VIIRS passes that do not cover the requested domain.
+
+## Projection: flat lon/lat, by default
+
+Cropping to a domain places the imagery on a regular (flat) WGS84 lon/lat grid,
+so every image is a rectangular map with straight gridlines, whatever the sensor
+or crop. This is the usual, consistent output.
+
+Add `--native-projection` only if you want to keep the satellite's own
+projection instead — geostationary for GOES (a slightly tilted frame away from
+the sub-satellite point). VIIRS is an orbital swath with no single fixed
+projection, so it always uses the flat lon/lat grid.
 
 ## Coordinate checklist
 

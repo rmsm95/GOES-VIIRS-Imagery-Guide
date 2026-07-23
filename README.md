@@ -31,26 +31,42 @@ On Windows PowerShell:
 
 ### 3. Create a GOES True Color image
 
-Download ABI channels `C01`, `C02`, and `C03` from the same observation. Enter your geographic domain in this exact order:
+Download ABI channels `C01`, `C02`, and `C03` from the same observation. Then
+choose an area with `--domain`, using either a **named domain** or **four
+numbers**.
 
-```text
-MIN_LON MIN_LAT MAX_LON MAX_LAT
+List the named domains (they live in `examples/domains.py` and are yours to
+edit):
+
+```bash
+python examples/render_satellite.py --list-domains
 ```
 
-Enter all four values in decimal degrees, including `.0` for whole degrees.
-
-The following example uses a user-defined box around Shishaldin:
+Render using a name:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/*.nc" \
   --composite true_color \
-  --domain -166.0 54.0 -162.0 56.0 \
+  --domain shishaldin \
   --output output/goes_shishaldin_true_color.png
 ```
 
-These coordinates are only an example entered in the command. They are not an automatic preset. Change all four values for your own study area.
+Or pass the four limits directly, in `MIN_LON MIN_LAT MAX_LON MAX_LAT` order and
+decimal degrees:
+
+```bash
+  --domain -166.0 54.0 -162.0 56.0
+```
+
+The named domains are only **examples**. Open `examples/domains.py` to add or
+change boxes for your own study areas.
+
+Images use a flat WGS84 lon/lat projection (a rectangular map with straight
+gridlines) by default. Add `--native-projection` only if you want the
+satellite's own geostationary projection instead. See
+[Choosing source coverage and a domain](docs/DOMAINS.md).
 
 To render the entire extent of the downloaded GOES file, omit `--domain`. For a true Full Disk image, the input files themselves must be ABI `F` products such as `ABI-L1b-RadF`.
 
@@ -77,6 +93,27 @@ python examples/render_satellite.py \
 The user defines the VIIRS domain with the same longitude/latitude order. The downloaded swath must intersect the requested box.
 
 For recent SDR products, prefer terrain-corrected geolocation: `GITCO` for I bands and `GMTCO` for M bands.
+
+### 5. Create a Day/Night True Color image
+
+Plain True Color is black at night. The `day_night` composite keeps real color
+by day and shows clouds at night, blending across twilight by the sun's angle:
+
+```bash
+python examples/render_satellite.py \
+  --sensor goes \
+  --files "data/goes/*.nc" \
+  --composite day_night \
+  --domain shishaldin \
+  --output output/goes_day_night.png
+```
+
+At night the clouds come from the clean infrared window band `C13` (10.3 µm) for
+GOES, or the Day/Night Band (`dynamic_dnb`, needs `SVDNB` + `GDNBO`) for VIIRS,
+falling back to an infrared band (`I05`/`M15`) when the DNB is absent. So for
+GOES download `C13` alongside `C01`/`C02`/`C03`. See
+[How RGB composites work](docs/RGB.md#daynight-true-color) for the recipe and
+tunable limits.
 
 ## Source coverage versus output domain
 
@@ -179,8 +216,10 @@ exact generated PNGs together.
 │   └── WORKFLOW.md
 ├── examples/
 │   ├── README.md
+│   ├── day_night.py            # day/night True Color blend
 │   ├── demo_goes_true_color.py
 │   ├── demo_viirs_true_color.py
+│   ├── domains.py              # named, editable geographic domains
 │   ├── goes18_coverage_data.py
 │   └── render_satellite.py
 ├── notebooks/
