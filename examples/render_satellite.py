@@ -28,6 +28,14 @@ VIIRS_GEO_PREFIXES = ("GITCO_", "GMTCO_", "GDNBO_", "GIMGO_", "GMODO_")
 # Composite names that trigger the day/night True Color blend (see day_night.py).
 DAY_NIGHT_COMPOSITES = {"day_night", "true_color_night", "true_color_day_night"}
 
+# Figure layout for save_dataset_with_lonlat_grid. The subplot margins are used
+# both to size the figure (so the map aspect matches the axes box and no white
+# bands appear) and in subplots_adjust(). MAX_AXES_* bound the map area in inches.
+SUBPLOT_LEFT, SUBPLOT_RIGHT = 0.08, 0.98
+SUBPLOT_BOTTOM, SUBPLOT_TOP = 0.09, 0.91
+MAX_AXES_WIDTH_INCHES, MAX_AXES_HEIGHT_INCHES = 13.0, 10.0
+MIN_AXES_HEIGHT_INCHES = 3.5  # keep room for the title and caption on wide domains
+
 
 def expand_inputs(values: Iterable[str]) -> list[str]:
     """Expand files, directories, and quoted glob patterns deterministically."""
@@ -303,9 +311,22 @@ def save_dataset_with_lonlat_grid(
     enhanced = image if image is not None else get_enhanced_image(dataset).pil_image()
     projection = area.to_cartopy_crs()
     width, height = enhanced.size
-    aspect = width / max(height, 1)
-    figure_width = min(14.0, max(8.0, 8.0 * aspect))
-    figure_height = min(11.0, max(5.0, figure_width / max(aspect, 0.5)))
+    # Size the figure so the axes box matches the map's aspect ratio exactly.
+    # Otherwise the equal-aspect map is centered inside a mismatched box and
+    # leaves white bands (a wide, short domain otherwise gets white at the
+    # top/bottom). SUBPLOT_MARGINS below must match subplots_adjust().
+    map_aspect = width / max(height, 1)
+    width_fraction = SUBPLOT_RIGHT - SUBPLOT_LEFT
+    height_fraction = SUBPLOT_TOP - SUBPLOT_BOTTOM
+    axes_width, axes_height = MAX_AXES_WIDTH_INCHES, MAX_AXES_WIDTH_INCHES / map_aspect
+    if axes_height > MAX_AXES_HEIGHT_INCHES:
+        axes_height = MAX_AXES_HEIGHT_INCHES
+        axes_width = MAX_AXES_HEIGHT_INCHES * map_aspect
+    if axes_height < MIN_AXES_HEIGHT_INCHES:
+        axes_height = MIN_AXES_HEIGHT_INCHES
+        axes_width = MIN_AXES_HEIGHT_INCHES * map_aspect
+    figure_width = axes_width / width_fraction
+    figure_height = axes_height / height_fraction
 
     figure = plt.figure(figsize=(figure_width, figure_height), facecolor="white")
     if area.crs.is_geographic:
@@ -428,7 +449,12 @@ def save_dataset_with_lonlat_grid(
         color="#333333",
     )
 
-    figure.subplots_adjust(left=0.08, right=0.98, bottom=0.09, top=0.91)
+    figure.subplots_adjust(
+        left=SUBPLOT_LEFT,
+        right=SUBPLOT_RIGHT,
+        bottom=SUBPLOT_BOTTOM,
+        top=SUBPLOT_TOP,
+    )
     figure.savefig(
         output_path,
         dpi=dpi,
@@ -464,6 +490,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--area",
         help="Optional Satpy area for resampling, for example 'eurol'.",
+    )
+    parser.add_argument(
+        "--title",
+        help="Override the image title (for example to add a UTC timestamp).",
     )
     add_domain_argument(parser)
     parser.add_argument(
@@ -573,7 +603,8 @@ def main(argv: list[str] | None = None) -> int:
             output_scene,
             composite,
             output,
-            title=f"{args.sensor.upper()} {composite.replace('_', ' ').title()}",
+            title=args.title
+            or f"{args.sensor.upper()} {composite.replace('_', ' ').title()}",
         )
     print(f"Image created: {output.resolve()}")
     return 0
@@ -634,7 +665,7 @@ def _render_day_night(args, scene, composites, bbox) -> int:
             output_scene,
             "true_color",
             output,
-            title=f"{args.sensor.upper()} True Color (Day/Night)",
+            title=args.title or f"{args.sensor.upper()} True Color (Day/Night)",
             image=image,
         )
     print(f"Image created: {output.resolve()}")
