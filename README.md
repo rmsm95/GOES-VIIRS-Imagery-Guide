@@ -75,6 +75,21 @@ Alguns exemplos comuns:
 
 Consulte [Como construir um RGB](docs/RGB.md) para compreender os canais, diferenças térmicas, normalização e gama.
 
+## Exemplos completos
+
+Não tem ficheiros preparados? Estes exemplos descarregam dados públicos de demonstração e criam a imagem:
+
+- [GOES ABI True Color](examples/demo_goes_true_color.py) — descarrega o exemplo GOES oficial do Satpy e produz um PNG;
+- [Suomi NPP VIIRS True Color](examples/demo_viirs_true_color.py) — descarrega uma passagem, bandas I/M e geolocalização;
+- [Explicação passo a passo e comandos](examples/README.md) — mostra também como usar ficheiros descarregados neste site.
+
+```bash
+python examples/demo_goes_true_color.py
+python examples/demo_viirs_true_color.py
+```
+
+Os downloads de demonstração podem ter centenas de megabytes. Os ficheiros ficam em `data/demo-*` e não são adicionados ao Git.
+
 ## Estrutura
 
 ```text
@@ -83,6 +98,9 @@ Consulte [Como construir um RGB](docs/RGB.md) para compreender os canais, difere
 │   ├── RGB.md
 │   └── WORKFLOW.md
 ├── examples/
+│   ├── README.md
+│   ├── demo_goes_true_color.py
+│   ├── demo_viirs_true_color.py
 │   └── render_satellite.py
 ├── tests/
 │   └── test_render_satellite.py

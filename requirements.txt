@@ -1,4 +1,5 @@
-satpy>=0.59,<0.60
+satpy[abi-l1b,generic-image,rayleigh,remote-reading,viirs-sdr]>=0.60,<0.61
+gcsfs>=2025.0
 netCDF4>=1.7
 h5py>=3.12
 pyresample>=1.34
