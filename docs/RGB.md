@@ -38,6 +38,12 @@ corrected = normalized ** (1 / gamma)
 
 Satpy already provides recipes, calibration, resampling, and enhancements. The example code therefore accepts a composite name instead of manually repeating every operation.
 
+For large mixed-resolution sources, the notebooks first load calibrated
+source channels, resample them to a bounded common grid, and then generate the
+RGB. This preserves the complete source extent while avoiding the memory cost
+of materializing every correction at the highest native resolution. The
+user-defined domain uses a regular WGS84 longitude/latitude grid.
+
 ## GOES ABI True Color with synthetic green
 
 ABI has blue (`C01`, 0.47 µm), red (`C02`, 0.64 µm), and vegetation (`C03`, 0.86 µm), but no pure green band.
@@ -103,6 +109,43 @@ It supports analysis of upper-tropospheric features, dry-air intrusions, and dif
 
 Source: [NOAA Air Mass RGB Quick Guide](https://www.star.nesdis.noaa.gov/goes/documents/QuickGuide_GOESR_AirMassRGB_final.pdf).
 
+## GOES ABI Ash RGB
+
+This infrared recipe can be used during day or night:
+
+| Display channel | ABI calculation | Physical range | Gamma |
+|---|---|---:|---:|
+| Red | C15 (12.3 µm) − C13 (10.3 µm) | −6.7 to 2.6 °C | 1.0 |
+| Green | C14 (11.2 µm) − C11 (8.4 µm) | −6.0 to 6.3 °C | 1.0 |
+| Blue | C13 (10.3 µm) | 243.6 to 302.4 K | 1.0 |
+
+Use Satpy's `ash` composite so the calibrated brightness temperatures,
+differences, ranges, and enhancement stay together. Pure ash commonly appears
+red to magenta, SO₂ can appear bright green, and mixed ash with SO₂ can appear
+yellow. Colors also depend on cloud height, opacity, atmospheric moisture,
+latitude, and viewing geometry.
+
+Required ABI channels: `C11`, `C13`, `C14`, and `C15` from one scan.
+
+Source: [CIRA GOES Ash RGB Quick Guide](https://rammb.cira.colostate.edu/training/visit/quick_guides/GOES_Ash_RGB.pdf).
+
+## GOES ABI SO₂ / Volcanic Emissions RGB
+
+| Display channel | ABI calculation | Physical range | Gamma |
+|---|---|---:|---:|
+| Red | C09 (6.95 µm) − C10 (7.34 µm) | −4.0 to 2.0 °C | 1.0 |
+| Green | C13 (10.35 µm) − C11 (8.50 µm) | −4.0 to 5.0 °C | 1.0 |
+| Blue | C13 (10.35 µm) | 243.05 to 302.95 K | 1.0 |
+
+Use Satpy's `volcanic_emissions` composite. The former `so2` name is
+deprecated. This RGB is a qualitative visualization rather than a quantitative
+SO₂ concentration or mass retrieval. Thick upper-level clouds can mask a gas
+signal, and low-level clouds can resemble low-level SO₂.
+
+Required ABI channels: `C09`, `C10`, `C11`, and `C13` from one scan.
+
+Source: [CIRA SO₂ RGB Quick Guide](https://rammb.cira.colostate.edu/training/rmtc/docs/QuickGuides/Quick_Guide_SO2_RGB.pdf).
+
 ## VIIRS True Color
 
 VIIRS moderate-resolution bands provide channels near red, green, and blue:
@@ -137,5 +180,6 @@ This is false color: displayed colors do not match human vision. The 1.61 µm ba
 - Applying True Color at night.
 - Comparing images that use different limits or gamma.
 - Entering latitude before longitude in `--domain`.
+- Treating the SO₂ RGB as a quantitative gas retrieval.
 
 Run `render_satellite.py --list-composites` to see what can be created from the available files.

@@ -5,12 +5,15 @@ from __future__ import annotations
 
 import argparse
 import glob
+import math
+import os
 import sys
 from pathlib import Path
 from typing import Iterable
 
 
 SUPPORTED_SUFFIXES = {".nc", ".nc4", ".h5", ".hdf5"}
+DEFAULT_DOMAIN_RESOLUTION = 0.02
 READERS = {
     "goes": "abi_l1b",
     "viirs": "viirs_sdr",
@@ -83,6 +86,35 @@ def resolve_bbox(
     return validate_bbox(domain) if domain is not None else None
 
 
+def create_lonlat_area(
+    domain: Iterable[float],
+    *,
+    resolution: float = DEFAULT_DOMAIN_RESOLUTION,
+    area_id: str = "user_lonlat_domain",
+):
+    """Create a regular WGS84 longitude/latitude grid for a user domain."""
+    bounds = validate_bbox(domain)
+    resolution = float(resolution)
+    if resolution <= 0:
+        raise ValueError("resolution must be greater than zero decimal degrees")
+
+    try:
+        from pyresample import create_area_def
+    except ImportError as exc:
+        raise SystemExit(
+            "Pyresample is not installed. Run: python -m pip install -r requirements.txt"
+        ) from exc
+
+    return create_area_def(
+        area_id,
+        {"proj": "longlat", "datum": "WGS84"},
+        area_extent=bounds,
+        resolution=(resolution, resolution),
+        units="degrees",
+        description="User-defined longitude/latitude domain",
+    )
+
+
 def add_domain_argument(parser: argparse.ArgumentParser) -> None:
     """Add a geographic domain that must be entered by the user."""
     parser.add_argument(
@@ -103,15 +135,203 @@ def crop_and_resample_scene(
     *,
     domain: Iterable[float] | None,
     area: str | None = None,
+    resolution: float = DEFAULT_DOMAIN_RESOLUTION,
 ):
-    """Crop a Scene geographically, then put all datasets on one grid."""
+    """Crop geographically and put datasets on a common output grid."""
     bounds = resolve_bbox(domain)
-    working_scene = scene.crop(ll_bbox=bounds) if bounds else scene
-    return (
-        working_scene.resample(area)
-        if area
-        else working_scene.resample(resampler="native")
+    working_scene = scene
+    if bounds:
+        try:
+            working_scene = scene.crop(ll_bbox=bounds)
+        except NotImplementedError:
+            # SwathDefinition sources such as VIIRS cannot always be sliced
+            # geographically before resampling. The target area still limits
+            # the output to the exact user-defined domain.
+            working_scene = scene
+    if area:
+        return working_scene.resample(area)
+    if bounds:
+        lonlat_area = create_lonlat_area(bounds, resolution=resolution)
+        return working_scene.resample(lonlat_area)
+    return working_scene.resample(resampler="native")
+
+
+def resample_to_max_size(scene, composite: str, *, max_size: int = 1600):
+    """Resample one source coverage and generate its composite at a bounded size."""
+    if max_size <= 0:
+        raise ValueError("max_size must be greater than zero pixels")
+
+    try:
+        dataset = scene[composite]
+    except KeyError:
+        # Multi-resolution composites such as ABI True Color are put on the
+        # wishlist by Scene.load(), but Satpy can only create them after their
+        # prerequisite channels share one area. Use the coarsest prerequisite
+        # grid as the native target; Scene.resample() then generates the
+        # requested composite.
+        area = scene.coarsest_area()
+    else:
+        area = dataset.attrs.get("area")
+    if area is None:
+        raise ValueError(f"Dataset '{composite}' has no area information.")
+
+    factor = max(1, math.ceil(max(area.width, area.height) / max_size))
+    target_area = area.aggregate(x=factor, y=factor) if factor > 1 else area
+    try:
+        resampled = scene.resample(target_area, resampler="native")
+    except ValueError:
+        # Native aggregation requires integer scale factors. Fall back to the
+        # general resampler for unusual source dimensions.
+        resampled = scene.resample(target_area)
+
+    try:
+        resampled[composite]
+    except KeyError:
+        resampled.load([composite], generate=True)
+        try:
+            resampled[composite]
+        except KeyError as exc:
+            raise ValueError(
+                f"Composite '{composite}' could not be generated after resampling."
+            ) from exc
+    return resampled
+
+
+def save_dataset_with_lonlat_grid(
+    scene,
+    composite: str,
+    output: str | Path,
+    *,
+    title: str | None = None,
+    dpi: int = 150,
+    coastline_resolution: str = "10m",
+) -> Path:
+    """Save a dataset with projected lon/lat grid lines and coastlines."""
+    output_path = Path(output).expanduser()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        from cartopy import config as cartopy_config
+        import cartopy.crs as ccrs
+        import matplotlib.pyplot as plt
+        from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+        from matplotlib.ticker import MaxNLocator
+        from satpy.enhancements.enhancer import get_enhanced_image
+    except ImportError as exc:
+        raise SystemExit(
+            "Map plotting dependencies are missing. Run: "
+            "python -m pip install -r requirements.txt"
+        ) from exc
+
+    cartopy_data_dir = Path(
+        os.environ.get("CARTOPY_DATA_DIR", output_path.parent / ".cartopy")
     )
+    cartopy_data_dir.mkdir(parents=True, exist_ok=True)
+    cartopy_config["data_dir"] = str(cartopy_data_dir)
+
+    dataset = scene[composite]
+    area = dataset.attrs.get("area")
+    if area is None:
+        raise ValueError(
+            f"Dataset '{composite}' has no area information for a longitude/latitude grid."
+        )
+
+    enhanced = get_enhanced_image(dataset).pil_image()
+    projection = area.to_cartopy_crs()
+    width, height = enhanced.size
+    aspect = width / max(height, 1)
+    figure_width = min(14.0, max(8.0, 8.0 * aspect))
+    figure_height = min(11.0, max(5.0, figure_width / max(aspect, 0.5)))
+
+    figure = plt.figure(figsize=(figure_width, figure_height), facecolor="white")
+    if area.crs.is_geographic:
+        min_lon, min_lat, max_lon, max_lat = area.area_extent
+        plate_carree = ccrs.PlateCarree()
+        axis = figure.add_subplot(1, 1, 1, projection=plate_carree)
+        axis.imshow(
+            enhanced,
+            transform=plate_carree,
+            extent=(min_lon, max_lon, min_lat, max_lat),
+            origin="upper",
+            zorder=0,
+        )
+        axis.set_extent(
+            (min_lon, max_lon, min_lat, max_lat),
+            crs=plate_carree,
+        )
+        longitude_ticks = MaxNLocator(nbins=8).tick_values(min_lon, max_lon)
+        latitude_ticks = MaxNLocator(nbins=6).tick_values(min_lat, max_lat)
+        longitude_ticks = longitude_ticks[
+            (longitude_ticks >= min_lon) & (longitude_ticks <= max_lon)
+        ]
+        latitude_ticks = latitude_ticks[
+            (latitude_ticks >= min_lat) & (latitude_ticks <= max_lat)
+        ]
+        axis.set_xticks(longitude_ticks, crs=plate_carree)
+        axis.set_yticks(latitude_ticks, crs=plate_carree)
+        axis.xaxis.set_major_formatter(LongitudeFormatter())
+        axis.yaxis.set_major_formatter(LatitudeFormatter())
+        axis.tick_params(labelsize=9)
+        axis.grid(
+            visible=True,
+            linewidth=0.65,
+            color="white",
+            alpha=0.8,
+            linestyle="--",
+            zorder=2,
+        )
+    else:
+        axis = figure.add_subplot(1, 1, 1, projection=projection)
+        axis.imshow(
+            enhanced,
+            transform=projection,
+            extent=projection.bounds,
+            origin="upper",
+            zorder=0,
+        )
+        axis.set_xlim(projection.bounds[0], projection.bounds[1])
+        axis.set_ylim(projection.bounds[2], projection.bounds[3])
+        grid = axis.gridlines(
+            crs=ccrs.PlateCarree(),
+            draw_labels=True,
+            linewidth=0.65,
+            color="white",
+            alpha=0.8,
+            linestyle="--",
+            x_inline=False,
+            y_inline=False,
+        )
+        grid.top_labels = False
+        grid.right_labels = False
+        grid.xlabel_style = {"size": 9}
+        grid.ylabel_style = {"size": 9}
+
+    axis.coastlines(
+        resolution=coastline_resolution,
+        color="#1a1a1a",
+        linewidth=0.75,
+        zorder=3,
+    )
+
+    if title:
+        figure.suptitle(title, fontsize=13, y=0.975)
+    figure.text(
+        0.5,
+        0.015,
+        "Longitude / Latitude grid (WGS 84)",
+        ha="center",
+        fontsize=8,
+        color="#333333",
+    )
+
+    figure.subplots_adjust(left=0.08, right=0.98, bottom=0.09, top=0.91)
+    figure.savefig(
+        output_path,
+        dpi=dpi,
+        facecolor="white",
+    )
+    plt.close(figure)
+    return output_path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -141,6 +361,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_domain_argument(parser)
     parser.add_argument(
+        "--resolution",
+        type=float,
+        default=DEFAULT_DOMAIN_RESOLUTION,
+        help=(
+            "Output grid spacing in decimal degrees when --domain is used "
+            f"(default: {DEFAULT_DOMAIN_RESOLUTION})."
+        ),
+    )
+    parser.add_argument(
+        "--plain-image",
+        action="store_true",
+        help="Save without longitude/latitude grid lines or coordinate labels.",
+    )
+    parser.add_argument(
         "--list-composites",
         action="store_true",
         help="List available composites and exit without creating an image.",
@@ -158,6 +392,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         resolve_bbox(args.domain)
+        if args.resolution <= 0:
+            raise ValueError("resolution must be greater than zero decimal degrees")
     except ValueError as exc:
         parser.error(str(exc))
 
@@ -192,11 +428,20 @@ def main(argv: list[str] | None = None) -> int:
         scene,
         domain=args.domain,
         area=args.area,
+        resolution=args.resolution,
     )
 
     output = Path(args.output).expanduser()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output_scene.save_dataset(composite, filename=str(output), writer="simple_image")
+    if args.plain_image:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output_scene.save_dataset(composite, filename=str(output), writer="simple_image")
+    else:
+        save_dataset_with_lonlat_grid(
+            output_scene,
+            composite,
+            output,
+            title=f"{args.sensor.upper()} {composite.replace('_', ' ').title()}",
+        )
     print(f"Image created: {output.resolve()}")
     return 0
 

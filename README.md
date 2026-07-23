@@ -56,6 +56,11 @@ To render the entire extent of the downloaded GOES file, omit `--domain`. For a 
 
 GOES ABI does not have a pure green channel. True Color synthesizes green from the blue, red, and vegetation channels.
 
+Saved images include longitude/latitude grid lines, coordinate labels, and
+Natural Earth coastlines by default. The first mapped output may download the
+coastline dataset to `output/.cartopy/`, which is excluded from Git. Use
+`--plain-image` only when a borderless image is required.
+
 ### 4. Create a VIIRS True Color image
 
 Keep the required spectral bands and matching geolocation files in the same directory:
@@ -101,6 +106,9 @@ Common examples include:
 - `natural_color`: emphasizes vegetation, soil, snow, and cloud types;
 - `airmass`: supports interpretation of air masses and upper-level dynamics;
 - `night_microphysics`: separates fog, low clouds, and ice clouds at night.
+- `ash`: GOES ABI Ash RGB using C11, C13, C14, and C15;
+- `volcanic_emissions`: the current Satpy name for the GOES SO₂ RGB using C09,
+  C10, C11, and C13.
 
 Read [How RGB composites work](docs/RGB.md) for channel recipes, brightness-temperature differences, normalization, and gamma.
 
@@ -126,6 +134,8 @@ and the exact resulting satellite image together:
 
 - [GOES ABI True Color notebook](notebooks/01_GOES_true_color.ipynb)
 - [VIIRS True Color notebook](notebooks/02_VIIRS_true_color.ipynb)
+- [GOES-18 Ash RGB notebook](notebooks/03_GOES_ash_rgb.ipynb)
+- [GOES-18 SO₂ / Volcanic Emissions RGB notebook](notebooks/04_GOES_so2_rgb.ipynb)
 - [JupyterLab setup and input guide](notebooks/README.md)
 
 Install and start JupyterLab from the repository root:
@@ -135,10 +145,22 @@ python -m pip install -r requirements-notebooks.txt
 python -m jupyter lab
 ```
 
-GitHub displays the saved GOES and VIIRS results without requiring JupyterLab.
-When rerun locally, each notebook downloads public demonstration data, uses a
-decimal `DOMAIN = (MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)`, and regenerates the PNG.
-Separate instructions show how to replace the demo data with a Shishaldin pass.
+GitHub displays every saved result without requiring JupyterLab. The Ash and
+SO₂ notebooks use public GOES-18 data from **3 October 2023 at 19:00 UTC**.
+Every GOES notebook shows four generated maps in this order:
+
+1. the complete Full Disk (`RadF`) scan that started at 19:00 UTC;
+2. the complete nearest CONUS (`RadC`) scan, which started at 19:01 UTC;
+3. the complete Mesoscale 1 (`RadM1`) sector that started at 19:00 UTC;
+4. a user-defined Shishaldin longitude/latitude domain resampled from Full
+   Disk.
+
+These are separate NOAA source products, not three labels applied to the same
+crop. The operational Mesoscale 1 sector at this time does not cover
+Shishaldin, and CONUS does not cover Alaska; the notebook intentionally shows
+their actual extents before creating the Shishaldin domain from Full Disk.
+Each notebook keeps its recipe, decimal domain, grid, coastlines, code, and
+exact generated PNGs together.
 
 ## Repository structure
 
@@ -152,12 +174,17 @@ Separate instructions show how to replace the demo data with a Shishaldin pass.
 │   ├── README.md
 │   ├── demo_goes_true_color.py
 │   ├── demo_viirs_true_color.py
+│   ├── goes18_coverage_data.py
 │   └── render_satellite.py
 ├── notebooks/
 │   ├── README.md
 │   ├── 01_GOES_true_color.ipynb
-│   └── 02_VIIRS_true_color.ipynb
+│   ├── 02_VIIRS_true_color.ipynb
+│   ├── 03_GOES_ash_rgb.ipynb
+│   └── 04_GOES_so2_rgb.ipynb
 ├── tests/
+│   ├── test_goes18_coverage_data.py
+│   ├── test_notebooks.py
 │   └── test_render_satellite.py
 ├── requirements-notebooks.txt
 └── requirements.txt
@@ -170,6 +197,9 @@ Separate instructions show how to replace the demo data with a Shishaldin pass.
 - [Satpy Scene cropping](https://satpy.readthedocs.io/en/stable/api/satpy.scene.html)
 - [NOAA: CIMSS Natural True Color guide](https://www.star.nesdis.noaa.gov/GOES/documents/ABIQuickGuide_CIMSSRGB_v2.pdf)
 - [NOAA: Day Land Cloud RGB guide](https://www.star.nesdis.noaa.gov/goes/documents/QuickGuide_GOESR_daylandcloudRGB_final.pdf)
+- [CIRA: GOES Ash RGB guide](https://rammb.cira.colostate.edu/training/visit/quick_guides/GOES_Ash_RGB.pdf)
+- [CIRA: GOES SO₂ RGB guide](https://rammb.cira.colostate.edu/training/rmtc/docs/QuickGuides/Quick_Guide_SO2_RGB.pdf)
+- [USGS/AVO: Shishaldin update for 3 October 2023](https://volcanoes.usgs.gov/hans-public/notice/DOI-USGS-AVO-2023-10-03T11%3A47%3A46-08%3A00)
 - [NOAA CLASS: VIIRS SDR and geolocation](https://www.class.noaa.gov/search/VIIRS_SDR)
 
 Data remains the property of its respective producer. Always review the source terms and operational notices.

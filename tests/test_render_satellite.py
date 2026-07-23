@@ -3,8 +3,10 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 from examples.render_satellite import (
+    create_lonlat_area,
     expand_inputs,
     has_viirs_geolocation,
+    resample_to_max_size,
     resolve_bbox,
     validate_bbox,
 )
@@ -56,3 +58,20 @@ class DomainTests(TestCase):
     def test_domain_order_is_validated(self):
         with self.assertRaisesRegex(ValueError, "invalid longitude limits"):
             validate_bbox((10.0, 30.0, -10.0, 40.0))
+
+    def test_decimal_domain_creates_regular_lonlat_grid(self):
+        domain = (-166.0, 54.0, -162.0, 56.0)
+
+        area = create_lonlat_area(domain, resolution=0.5)
+
+        self.assertEqual(area.area_extent, domain)
+        self.assertEqual((area.width, area.height), (8, 4))
+        self.assertIn("longlat", area.proj_str)
+
+    def test_domain_resolution_must_be_positive(self):
+        with self.assertRaisesRegex(ValueError, "greater than zero"):
+            create_lonlat_area((-166.0, 54.0, -162.0, 56.0), resolution=0.0)
+
+    def test_source_extent_size_must_be_positive(self):
+        with self.assertRaisesRegex(ValueError, "greater than zero"):
+            resample_to_max_size(object(), "ash", max_size=0)

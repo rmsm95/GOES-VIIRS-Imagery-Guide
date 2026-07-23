@@ -11,9 +11,15 @@ try:
         add_domain_argument,
         crop_and_resample_scene,
         resolve_bbox,
+        save_dataset_with_lonlat_grid,
     )
 except ImportError:
-    from render_satellite import add_domain_argument, crop_and_resample_scene, resolve_bbox
+    from render_satellite import (
+        add_domain_argument,
+        crop_and_resample_scene,
+        resolve_bbox,
+        save_dataset_with_lonlat_grid,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -69,8 +75,12 @@ def main() -> int:
     )
 
     output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    resampled.save_dataset(composite, filename=str(output), writer="simple_image")
+    save_dataset_with_lonlat_grid(
+        resampled,
+        composite,
+        output,
+        title="GOES ABI True Color",
+    )
     print(f"Image created: {output.resolve()}")
     return 0
 

@@ -6,7 +6,16 @@ The three scripts cover different situations:
 |---|---|---|
 | `demo_goes_true_color.py` | Automatically downloads an official Satpy GOES ABI demo dataset | `output/demo_goes_true_color.png` |
 | `demo_viirs_true_color.py` | Automatically downloads a Suomi NPP pass with I/M bands and geolocation | `output/demo_viirs_true_color.png` |
-| `render_satellite.py` | Uses your own NOAA files | A PNG with the selected composite |
+| `render_satellite.py` | Uses your own NOAA files | A mapped PNG with the selected composite |
+
+Mapped PNGs include longitude/latitude labels, grid lines, and coastlines by
+default. Use `--plain-image` to omit these map elements.
+
+The executed GOES notebooks use
+[`goes18_coverage_data.py`](goes18_coverage_data.py) to identify separate
+Full Disk, CONUS, and Mesoscale 1 NOAA files from the 3 October 2023 19:00 UTC
+window. The source lists are explicit so a coverage name can never silently
+become a crop of another product.
 
 ## Demo 1 — GOES True Color
 
@@ -112,6 +121,33 @@ python examples/render_satellite.py \
   --composite night_microphysics \
   --domain -166.0 54.0 -162.0 56.0 \
   --output output/goes_night_microphysics.png
+```
+
+### GOES Ash RGB
+
+Download C11, C13, C14, and C15 from the same scan:
+
+```bash
+python examples/render_satellite.py \
+  --sensor goes \
+  --files "data/goes/*.nc" \
+  --composite ash \
+  --domain -170.0 53.0 -160.0 58.0 \
+  --output output/goes_ash_rgb.png
+```
+
+### GOES SO₂ / Volcanic Emissions RGB
+
+Download C09, C10, C11, and C13 from the same scan. `volcanic_emissions` is
+the current Satpy name; the older `so2` composite is deprecated.
+
+```bash
+python examples/render_satellite.py \
+  --sensor goes \
+  --files "data/goes/*.nc" \
+  --composite volcanic_emissions \
+  --domain -170.0 53.0 -160.0 58.0 \
+  --output output/goes_so2_rgb.png
 ```
 
 ### VIIRS True Color
