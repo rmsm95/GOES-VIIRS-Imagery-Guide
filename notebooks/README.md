@@ -38,17 +38,21 @@ On the first local execution, the notebooks download public data:
   3 October 2023 19:00 UTC window;
 - VIIRS: one Suomi NPP granule with I/M bands and geolocation.
 
-Each GOES notebook embeds four separate results in order:
+Each GOES notebook embeds six separate results:
 
-1. Full Disk (`RadF`), scan start 19:00 UTC;
-2. the nearest CONUS (`RadC`) scan, start 19:01 UTC;
-3. Mesoscale 1 (`RadM1`), scan start 19:00 UTC;
-4. a user-defined domain created from Full Disk.
+1. Full Disk (`RadF`), then a Shishaldin-centered Full Disk domain;
+2. the nearest CONUS (`RadC`) scan, then a domain inside CONUS;
+3. Mesoscale 1 (`RadM1`), then a domain inside that Mesoscale sector.
+
+The Full Disk and Mesoscale scans start at 19:00 UTC. The nearest CONUS scan
+starts at 19:01 UTC.
 
 The first three results retain the complete extent of their own NOAA product.
 They are not repeated crops of Full Disk. CONUS does not cover Alaska and the
 operational Mesoscale 1 sector at this time does not cover Shishaldin, so the
-Shishaldin domain is correctly produced from Full Disk.
+Shishaldin domain is correctly produced from Full Disk. CONUS and Mesoscale
+still have their own editable domain values, but those values must stay inside
+their respective sources.
 
 The executed demo domains are written in decimal degrees and intersect their
 source files. The PNGs are embedded in the notebooks, so they are visible
@@ -57,15 +61,21 @@ grid and Natural Earth coastlines.
 
 ## Use your own domain
 
-For Shishaldin, replace the demo input with matching downloaded files and enter:
+The GOES notebooks define one domain for each source:
 
 ```python
-DOMAIN = (-170.0, 53.0, -160.0, 58.0)
+DOMAINS = {
+    "full_disk": (-165.97, 52.76, -161.97, 56.76),
+    "conus": (-125.0, 32.0, -115.0, 42.0),
+    "mesoscale": (-112.0, 10.0, -104.0, 17.0),
+}
 ```
 
 The order is `MIN_LON, MIN_LAT, MAX_LON, MAX_LAT`. Use `.0` for whole degrees
-and values such as `.5` when needed. The coordinates must intersect the GOES
-source coverage or VIIRS swath.
+and values such as `.5` when needed. The Full Disk example is symmetric around
+approximately 163.97°W, 54.76°N so Shishaldin appears at the center. Each
+coordinate box must intersect the GOES source with the same key. VIIRS keeps
+its separate swath domain.
 
 The final cells regenerate and display the PNGs directly inside JupyterLab.
 

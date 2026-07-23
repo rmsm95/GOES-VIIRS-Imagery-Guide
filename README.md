@@ -147,18 +147,25 @@ python -m jupyter lab
 
 GitHub displays every saved result without requiring JupyterLab. The Ash and
 SO₂ notebooks use public GOES-18 data from **3 October 2023 at 19:00 UTC**.
-Every GOES notebook shows four generated maps in this order:
+Every GOES notebook shows six generated maps, grouped by source:
 
-1. the complete Full Disk (`RadF`) scan that started at 19:00 UTC;
-2. the complete nearest CONUS (`RadC`) scan, which started at 19:01 UTC;
-3. the complete Mesoscale 1 (`RadM1`) sector that started at 19:00 UTC;
-4. a user-defined Shishaldin longitude/latitude domain resampled from Full
-   Disk.
+1. the complete Full Disk (`RadF`) scan, followed by a user-entered domain
+   centered on Shishaldin;
+2. the complete nearest CONUS (`RadC`) scan, followed by its own editable
+   domain inside the CONUS coverage;
+3. the complete Mesoscale 1 (`RadM1`) sector, followed by its own editable
+   domain inside that operational sector.
+
+The Full Disk and Mesoscale scans started at 19:00 UTC. The nearest CONUS scan
+started at 19:01 UTC. All three domains are explicit decimal
+`MIN_LON, MIN_LAT, MAX_LON, MAX_LAT` values in the notebook's `DOMAINS`
+dictionary.
 
 These are separate NOAA source products, not three labels applied to the same
 crop. The operational Mesoscale 1 sector at this time does not cover
 Shishaldin, and CONUS does not cover Alaska; the notebook intentionally shows
-their actual extents before creating the Shishaldin domain from Full Disk.
+their actual extents. Only the Full Disk domain can be centered on Shishaldin;
+the other two domain examples remain inside their own source coverages.
 Each notebook keeps its recipe, decimal domain, grid, coastlines, code, and
 exact generated PNGs together.
 

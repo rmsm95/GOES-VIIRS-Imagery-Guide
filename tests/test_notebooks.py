@@ -12,10 +12,10 @@ NOTEBOOKS = (
 )
 GOES_NOTEBOOKS = (NOTEBOOKS[0], NOTEBOOKS[2], NOTEBOOKS[3])
 EXPECTED_DOMAINS = {
-    NOTEBOOKS[0]: "DOMAIN = (-170.0, 53.0, -160.0, 58.0)",
+    NOTEBOOKS[0]: '"full_disk": (-165.97, 52.76, -161.97, 56.76)',
     NOTEBOOKS[1]: "DOMAIN = (0.0, 35.0, 10.0, 38.0)",
-    NOTEBOOKS[2]: "DOMAIN = (-170.0, 53.0, -160.0, 58.0)",
-    NOTEBOOKS[3]: "DOMAIN = (-170.0, 53.0, -160.0, 58.0)",
+    NOTEBOOKS[2]: '"full_disk": (-165.97, 52.76, -161.97, 56.76)',
+    NOTEBOOKS[3]: '"full_disk": (-165.97, 52.76, -161.97, 56.76)',
 }
 
 
@@ -49,16 +49,18 @@ class NotebookTests(TestCase):
                     for output in cell.get("outputs", [])
                     if "image/png" in output.get("data", {})
                 ]
-                expected_count = 4 if path in GOES_NOTEBOOKS else 1
+                expected_count = 6 if path in GOES_NOTEBOOKS else 1
                 self.assertEqual(len(embedded_pngs), expected_count)
                 self.assertGreater(max(map(len, embedded_pngs)), 10_000)
 
     def test_goes_notebooks_show_source_coverages_in_the_requested_order(self):
         expected_headings = (
-            "## 1. Full Disk",
-            "## 2. CONUS",
-            "## 3. Mesoscale 1",
-            "## 4. User-defined",
+            "## 1. Full Disk source",
+            "### 1a. Full Disk domain",
+            "## 2. CONUS source",
+            "### 2a. CONUS user-defined domain",
+            "## 3. Mesoscale 1 source",
+            "### 3a. Mesoscale 1 user-defined domain",
         )
 
         for path in GOES_NOTEBOOKS:
@@ -70,8 +72,11 @@ class NotebookTests(TestCase):
                 positions = [all_source.index(heading) for heading in expected_headings]
                 self.assertEqual(positions, sorted(positions))
                 self.assertIn('COVERAGES = ("full_disk", "conus", "mesoscale")', all_source)
+                self.assertIn('"conus": (-125.0, 32.0, -115.0, 42.0)', all_source)
+                self.assertIn('"mesoscale": (-112.0, 10.0, -104.0, 17.0)', all_source)
                 self.assertIn("download_coverage", all_source)
-                self.assertIn("2023-10-03 19:00 UTC", all_source)
+                self.assertIn("3 October 2023 19:00 UTC", all_source)
+                self.assertIn("goes18-20231003-1900", all_source)
 
     def test_volcanic_notebooks_document_the_requested_recipes(self):
         ash = json.loads(NOTEBOOKS[2].read_text(encoding="utf-8"))
@@ -79,12 +84,12 @@ class NotebookTests(TestCase):
         ash_source = "\n".join("".join(cell["source"]) for cell in ash["cells"])
         so2_source = "\n".join("".join(cell["source"]) for cell in so2["cells"])
 
-        self.assertIn("2023-10-03 19:00 UTC", ash_source)
+        self.assertIn("3 October 2023 19:00 UTC", ash_source)
         self.assertIn('COMPOSITE = "ash"', ash_source)
         self.assertIn('PRODUCT_LABEL = "Ash RGB"', ash_source)
         self.assertIn("C15 (12.3 µm) − C13 (10.3 µm)", ash_source)
 
-        self.assertIn("2023-10-03 19:00 UTC", so2_source)
+        self.assertIn("3 October 2023 19:00 UTC", so2_source)
         self.assertIn('COMPOSITE = "volcanic_emissions"', so2_source)
         self.assertIn('PRODUCT_LABEL = "SO₂ RGB"', so2_source)
         self.assertIn("C09 (6.95 µm) − C10 (7.34 µm)", so2_source)
