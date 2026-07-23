@@ -6,6 +6,15 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+try:
+    from .render_satellite import (
+        add_domain_arguments,
+        crop_and_resample_scene,
+        resolve_bbox,
+    )
+except ImportError:
+    from render_satellite import add_domain_arguments, crop_and_resample_scene, resolve_bbox
+
 
 DEMO_CHANNELS = ("I01", "I02", "M03", "M04", "M05")
 
@@ -22,11 +31,17 @@ def build_parser() -> argparse.ArgumentParser:
         default="output/demo_viirs_true_color.png",
         help="Imagem PNG de saída.",
     )
+    add_domain_arguments(parser)
     return parser
 
 
 def main() -> int:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
+    try:
+        resolve_bbox(args.domain, args.bbox)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     try:
         from satpy import Scene
@@ -51,7 +66,11 @@ def main() -> int:
         )
 
     scene.load(["true_color"], generate=True)
-    resampled = scene.resample(resampler="native")
+    resampled = crop_and_resample_scene(
+        scene,
+        domain=args.domain,
+        bbox=args.bbox,
+    )
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

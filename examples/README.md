@@ -55,6 +55,7 @@ python examples/render_satellite.py \
   --sensor goes \
   --files "dados/goes/OR_ABI-L1b-RadF-M6C0[123]*.nc" \
   --composite true_color \
+  --domain full-disk \
   --output output/meu_goes_true_color.png
 ```
 
@@ -91,7 +92,20 @@ python examples/render_satellite.py \
   --sensor viirs \
   --files "dados/viirs/*.h5" \
   --composite true_color \
+  --domain azores \
   --output output/meu_viirs_true_color.png
+```
+
+Também pode indicar limites próprios:
+
+```bash
+python examples/render_satellite.py \
+  --sensor viirs \
+  --files "dados/viirs/*.h5" \
+  --composite true_color \
+  --domain custom \
+  --bbox -31 36 -24 40 \
+  --output output/viirs_area_personalizada.png
 ```
 
 Se o composite não aparecer:

@@ -2,7 +2,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from examples.render_satellite import expand_inputs, has_viirs_geolocation
+from examples.render_satellite import (
+    DOMAIN_BBOXES,
+    expand_inputs,
+    has_viirs_geolocation,
+    resolve_bbox,
+    validate_bbox,
+)
 
 
 class InputExpansionTests(TestCase):
@@ -38,3 +44,23 @@ class InputExpansionTests(TestCase):
 
         self.assertTrue(has_viirs_geolocation(files))
         self.assertFalse(has_viirs_geolocation(files[:1]))
+
+
+class DomainTests(TestCase):
+    def test_named_domain_returns_expected_bbox(self):
+        self.assertEqual(resolve_bbox("azores", None), DOMAIN_BBOXES["azores"])
+
+    def test_full_disk_keeps_source_extent(self):
+        self.assertIsNone(resolve_bbox("full-disk", None))
+
+    def test_custom_bbox_overrides_named_domain(self):
+        custom = (-30, 35, -20, 43)
+        self.assertEqual(resolve_bbox("conus", custom), custom)
+
+    def test_custom_domain_requires_bbox(self):
+        with self.assertRaisesRegex(ValueError, "requer --bbox"):
+            resolve_bbox("custom", None)
+
+    def test_bbox_order_is_validated(self):
+        with self.assertRaisesRegex(ValueError, "longitude inválida"):
+            validate_bbox((10, 30, -10, 40))

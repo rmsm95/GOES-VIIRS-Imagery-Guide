@@ -6,6 +6,15 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+try:
+    from .render_satellite import (
+        add_domain_arguments,
+        crop_and_resample_scene,
+        resolve_bbox,
+    )
+except ImportError:
+    from render_satellite import add_domain_arguments, crop_and_resample_scene, resolve_bbox
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -19,11 +28,23 @@ def build_parser() -> argparse.ArgumentParser:
         default="output/demo_goes_true_color.png",
         help="Imagem PNG de saída.",
     )
+    add_domain_arguments(parser, default="conus")
     return parser
 
 
 def main() -> int:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
+    try:
+        resolve_bbox(args.domain, args.bbox)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    if args.domain in {"full-disk", "mesoscale"}:
+        raise SystemExit(
+            "Este conjunto de demonstração é CONUS. Para Full Disk ou Mesoscale, "
+            "descarregue ficheiros F/M e use render_satellite.py."
+        )
 
     try:
         from satpy import Scene
@@ -48,7 +69,11 @@ def main() -> int:
         )
 
     scene.load([composite], generate=True)
-    resampled = scene.resample(scene.coarsest_area(), resampler="native")
+    resampled = crop_and_resample_scene(
+        scene,
+        domain=args.domain,
+        bbox=args.bbox,
+    )
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

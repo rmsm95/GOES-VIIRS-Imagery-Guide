@@ -36,6 +36,7 @@ python examples/render_satellite.py \
   --sensor goes \
   --files "dados/goes/*.nc" \
   --composite true_color \
+  --domain full-disk \
   --output output/goes_true_color.png
 ```
 
@@ -50,10 +51,19 @@ python examples/render_satellite.py \
   --sensor viirs \
   --files "dados/viirs/*.h5" \
   --composite true_color \
+  --domain azores \
   --output output/viirs_true_color.png
 ```
 
 Os produtos recentes usam preferencialmente geolocalização corrigida pelo terreno: `GITCO` para bandas I e `GMTCO` para bandas M.
+
+## Escolher domínio ou área
+
+- GOES: descarregue `F` para Full Disk, `C` para CONUS ou `M` para Mesoscale.
+- GOES e VIIRS: use `--domain azores`, `--domain iberia`, `--domain north-atlantic` ou `--bbox`.
+- VIIRS: o recorte usa a geolocalização da passagem e só funciona se a passagem cobrir a área.
+
+Consulte [Selecionar o domínio ou área](docs/DOMAINS.md) para todos os exemplos.
 
 ## Descobrir os RGB disponíveis
 
@@ -96,6 +106,7 @@ Os downloads de demonstração podem ter centenas de megabytes. Os ficheiros fic
 .
 ├── docs/
 │   ├── RGB.md
+│   ├── DOMAINS.md
 │   └── WORKFLOW.md
 ├── examples/
 │   ├── README.md
