@@ -12,6 +12,7 @@ dependencies:
   - xarray>=2024.1
   - dask>=2024.1
   - numpy>=1.26
+  - pyyaml>=6.0
   - scipy>=1.11
   # --- composites, enhancements, corrections -------------------------------
   - pyspectral>=0.13          # Rayleigh correction for True Color

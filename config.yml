@@ -1,0 +1,92 @@
+# Configuration used by the notebooks.
+#
+# Edit this file and re-run a notebook: the folders, domains, channels and the
+# whole look of the figures come from here. Anything set here can still be
+# overridden in the notebook itself, right where it is used.
+
+# ---------------------------------------------------------------------------
+# Where the data lives. Paths are relative to the repository root.
+# Point these at your own folders.
+# ---------------------------------------------------------------------------
+data:
+  full_disk: data/full_disk_band     # ABI-L1b-RadF files
+  conus: data/conus                  # ABI-L1b-RadC files
+  mesoscale: data/mesoscale          # ABI-L1b-RadM files
+  true_color: data/true_color
+  ash_rgb: data/ash_rgb
+  so2_rgb: data/so2_rgb
+  glm_abi: data/glm-demo/abi16f      # ABI scan for the GLM example
+  glm_flashes: data/glm-demo/glm16   # GLM-L2-LCFA files
+
+# ---------------------------------------------------------------------------
+# The scan to fetch when a folder is empty. Nothing is downloaded if your
+# folder already has files.
+# ---------------------------------------------------------------------------
+scene:
+  bucket: noaa-goes18
+  full_disk_time: "2023-10-03 19:00"
+  conus_time: "2023-10-03 19:01"     # the CONUS scan starts one minute later
+  mesoscale_time: "2023-10-03 19:00"
+  glm_bucket: noaa-goes16            # eastern satellite for the storm example
+  glm_time: "2023-10-03 20:00"
+  glm_window_minutes: 10             # how long a window of flashes to draw
+
+# ---------------------------------------------------------------------------
+# Named boxes: (min_lon, min_lat, max_lon, max_lat) in decimal degrees.
+# Add your own; a notebook can also ignore these and use four numbers directly.
+# ---------------------------------------------------------------------------
+domains:
+  shishaldin: [-166.0, 53.0, -162.0, 56.0]
+  shishaldin_big: [-169.0, 52.5, -159.0, 57.0]
+  shishaldin_wide: [-170.0, 52.0, -158.0, 58.0]
+  conus_west: [-125.0, 32.0, -115.0, 42.0]
+  mesoscale_example: [-112.0, 10.0, -104.0, 17.0]
+  plains_storms: [-104.0, 36.0, -97.0, 43.0]
+
+# ---------------------------------------------------------------------------
+# What each product needs and how it is scaled.
+# ---------------------------------------------------------------------------
+products:
+  band:
+    band: C13                        # 10.3 um clean infrared window
+    channels: [C13]
+    cmap: gray_r                     # try "gray", "inferno", "viridis"
+    vmin: 200                        # kelvin
+    vmax: 290
+    colorbar_label: Brightness Temperature (K)
+  true_color:
+    composite: true_color
+    channels: [C01, C02, C03]
+  ash:
+    composite: ash
+    channels: [C11, C13, C14, C15]
+  volcanic_emissions:
+    composite: volcanic_emissions
+    channels: [C09, C10, C11, C13]
+
+# ---------------------------------------------------------------------------
+# How the figures look.
+# ---------------------------------------------------------------------------
+style:
+  coast_colour: red
+  coast_width: 0.8
+  coast_resolution: "10m"            # "10m", "50m" or "110m"
+
+  grid_colour: white
+  grid_alpha: 0.45
+  grid_style: "--"
+  grid_width: 0.5
+
+  marker_lon: -163.9711              # Shishaldin; set to null to hide
+  marker_lat: 54.7554
+  marker_colour: red
+  marker_size: 10
+
+  flash_colour: yellow               # GLM flashes
+  flash_size: 14
+  flash_edge_width: 0.8
+
+  figure_width: 13.5                 # inches
+  dpi: 160
+  resolution: 0.02                   # degrees per pixel for domain plots
+  overview_pixels: 1200              # size of the complete-scan overview
