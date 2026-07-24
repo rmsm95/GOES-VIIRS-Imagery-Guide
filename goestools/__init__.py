@@ -21,11 +21,13 @@ the fixed-grid equations of the GOES-R Product User Guide.
 from .glm import read_glm_flashes
 from .grid import (
     GridSpec,
+    cartopy_crs,
     clean_mesh,
     corner_lonlat,
     edges,
     grid_spec,
     lonlat_to_xy,
+    projection_extent,
     viewing_zenith,
     xy_to_lonlat,
 )
@@ -54,5 +56,6 @@ __all__ = [
     # the fixed grid
     "GridSpec", "grid_spec", "xy_to_lonlat", "lonlat_to_xy",
     "corner_lonlat", "edges", "viewing_zenith", "clean_mesh",
+    "cartopy_crs", "projection_extent",
 ]
 __version__ = "0.1.0"

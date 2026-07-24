@@ -30,6 +30,7 @@ class Composite:
     lon_corners: np.ndarray
     lat_corners: np.ndarray
     time: datetime | None
+    extent: list | None = None
     satellite: str = ""
     gs: GridSpec | None = field(default=None, repr=False)
 
@@ -142,7 +143,8 @@ def _finish(rgb, name, reference):
     return Composite(rgb, name,
                      reference.lon_corners[:rows + 1, :cols + 1],
                      reference.lat_corners[:rows + 1, :cols + 1],
-                     reference.time, reference.satellite, reference.gs)
+                     reference.time, reference.extent, reference.satellite,
+                     reference.gs)
 
 
 def true_color(files, lon_min=None, lon_max=None, lat_min=None, lat_max=None,

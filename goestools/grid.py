@@ -169,3 +169,30 @@ def clean_mesh(lon_corners, lat_corners, values):
     if np.issubdtype(trimmed.dtype, np.floating):
         invalid = invalid | ~np.isfinite(trimmed)
     return lon, lat, np.ma.masked_where(invalid, trimmed)
+
+
+def cartopy_crs(gs: GridSpec):
+    """A cartopy Geostationary projection matching this file's grid.
+
+    Use it to draw a whole scan as the disk the satellite actually sees,
+    instead of stretching it onto a flat longitude/latitude map.
+    """
+    import cartopy.crs as ccrs
+
+    return ccrs.Geostationary(
+        central_longitude=gs.lon_origin,
+        satellite_height=gs.H - gs.r_eq,      # height above the ellipsoid
+        sweep_axis=gs.sweep,
+        globe=ccrs.Globe(semimajor_axis=gs.r_eq, semiminor_axis=gs.r_pol),
+    )
+
+
+def projection_extent(x, y, gs: GridSpec):
+    """``[left, right, bottom, top]`` in projection metres, for ``imshow``.
+
+    The ABI y axis runs north to south, so the top edge comes from ``y[0]``.
+    """
+    height = gs.H - gs.r_eq
+    ex = edges(np.asarray(x, dtype=float)) * height
+    ey = edges(np.asarray(y, dtype=float)) * height
+    return [float(ex[0]), float(ex[-1]), float(ey[-1]), float(ey[0])]

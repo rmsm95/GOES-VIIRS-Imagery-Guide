@@ -19,7 +19,14 @@ from pathlib import Path
 
 import numpy as np
 
-from .grid import GridSpec, corner_lonlat, grid_spec, lonlat_to_xy, xy_to_lonlat
+from .grid import (
+    GridSpec,
+    corner_lonlat,
+    grid_spec,
+    lonlat_to_xy,
+    projection_extent,
+    xy_to_lonlat,
+)
 
 
 @dataclass
@@ -35,6 +42,7 @@ class Subset:
     lat_corners: np.ndarray
     time: datetime | None
     channel: int | None
+    extent: list | None = None   # projection metres, for imshow
     satellite: str = ""
     scene: str = ""
     gs: GridSpec | None = field(default=None, repr=False)
@@ -173,7 +181,8 @@ def read_subset(path, lon_min=None, lon_max=None, lat_min=None, lat_max=None,
     lon, lat = xy_to_lonlat(x, y, gs)
     lon_corners, lat_corners = corner_lonlat(x, y, gs)
     return Subset(values, quantity, units, lon, lat, lon_corners, lat_corners,
-                  time, channel, satellite, scene, gs)
+                  time, channel, projection_extent(x, y, gs),
+                  satellite, scene, gs)
 
 
 def channel_of(path):
