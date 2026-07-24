@@ -260,10 +260,11 @@ def draw_rgb(ax, composite, **kwargs):
 
     mesh = ax.pcolormesh(lon, lat, placeholder, **kwargs)
     mesh.set_facecolor(rgba)
-    # Clearing the scalar array is what makes the face colours stick. Cartopy's
-    # collection rejects None, so fall back to leaving it in place there.
+    # The scalar array has to go, or matplotlib re-maps it through the colour
+    # map at draw time and the face colours are lost. Cartopy's collection
+    # rejects set_array(None), so clear the attribute directly there.
     try:
         mesh.set_array(None)
-    except AttributeError:
-        pass
+    except (AttributeError, TypeError):
+        mesh._A = None
     return mesh
