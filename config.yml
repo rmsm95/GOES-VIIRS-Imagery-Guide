@@ -1,8 +1,15 @@
 # Configuration used by the notebooks.
 #
-# Edit this file and re-run a notebook: the folders, domains, channels and the
-# whole look of the figures come from here. Anything set here can still be
-# overridden in the notebook itself, right where it is used.
+# Edit this file and re-run a notebook: the folders, channels and the look of
+# the figures come from here. Anything set here can still be overridden in the
+# notebook itself, right where it is used.
+#
+# The DOMAIN is deliberately NOT in this file. Every notebook asks you for it
+# directly:
+#
+#     DOMAIN = (min_lon, min_lat, max_lon, max_lat)
+#
+# so the area you look at is always your own choice, never a preset.
 
 # ---------------------------------------------------------------------------
 # Where the data lives. Paths are relative to the repository root.
@@ -30,18 +37,6 @@ scene:
   glm_bucket: noaa-goes16            # eastern satellite for the storm example
   glm_time: "2023-10-03 20:00"
   glm_window_minutes: 10             # how long a window of flashes to draw
-
-# ---------------------------------------------------------------------------
-# Named boxes: (min_lon, min_lat, max_lon, max_lat) in decimal degrees.
-# Add your own; a notebook can also ignore these and use four numbers directly.
-# ---------------------------------------------------------------------------
-domains:
-  shishaldin: [-166.0, 53.0, -162.0, 56.0]
-  shishaldin_big: [-169.0, 52.5, -159.0, 57.0]
-  shishaldin_wide: [-170.0, 52.0, -158.0, 58.0]
-  conus_west: [-125.0, 32.0, -115.0, 42.0]
-  mesoscale_example: [-112.0, 10.0, -104.0, 17.0]
-  plains_storms: [-104.0, 36.0, -97.0, 43.0]
 
 # ---------------------------------------------------------------------------
 # What each product needs and how it is scaled.

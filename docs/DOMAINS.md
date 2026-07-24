@@ -7,65 +7,29 @@ There are two separate spatial decisions:
 
 A crop cannot create data that is absent from the source file.
 
-## Two ways to give a domain
+## The domain is always yours
 
-You can pass either a **named domain** or **four numbers**.
+There are no presets. Wherever a domain is asked for, you give four numbers in
+decimal degrees:
 
-### Named domains (shortcut)
+```text
+MIN_LON MIN_LAT MAX_LON MAX_LAT
+```
 
-`examples/domains.py` holds a small, editable list of named boxes. List them:
+In a notebook:
+
+```python
+DOMAIN = (-166.0, 53.0, -162.0, 56.0)
+DOMAIN = None      # no crop: plot the complete image
+```
+
+On the command line:
 
 ```bash
-python examples/render_satellite.py --list-domains
+--domain -166.0 53.0 -162.0 56.0
 ```
 
-Then use a name instead of typing coordinates:
-
-```text
---domain shishaldin
-```
-
-These names are only examples — open `examples/domains.py` and add, edit, or
-remove entries for your own study areas. Each entry is
-`"name": (MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)`.
-
-### Raw coordinates
-
-You can always enter four longitude/latitude limits in decimal degrees instead:
-
-```text
---domain MIN_LON MIN_LAT MAX_LON MAX_LAT
-```
-
-The limits must follow these rules:
-
-```text
--180.0 <= MIN_LON < MAX_LON <= 180.0
- -90.0 <= MIN_LAT < MAX_LAT <= 90.0
-```
-
-Use negative longitude for locations west of Greenwich and negative latitude
-for locations south of the equator. Write all four values as decimals, including
-`.0` for whole degrees; half degrees can be written as `.5`.
-
-### Example around Shishaldin
-
-This is an example box entered directly by the user:
-
-```bash
---domain -166.0 54.0 -162.0 56.0
-```
-
-It means:
-
-| Argument | Value |
-|---|---:|
-| minimum longitude | `-166.0` |
-| minimum latitude | `54.0` |
-| maximum longitude | `-162.0` |
-| maximum latitude | `56.0` |
-
-Change the four values to match the exact study area and desired context. The command does not select Shishaldin or any other region automatically.
+Omit `--domain` to keep the complete extent.
 
 ## GOES source coverage
 

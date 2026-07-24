@@ -11,11 +11,6 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-try:
-    from .domains import DOMAINS, list_domains
-except ImportError:
-    from domains import DOMAINS, list_domains
-
 
 SUPPORTED_SUFFIXES = {".nc", ".nc4", ".h5", ".hdf5"}
 DEFAULT_DOMAIN_RESOLUTION = 0.02
@@ -109,32 +104,21 @@ def resolve_bbox(
 
 
 def resolve_domain_tokens(
-    tokens: Iterable[str] | None,
-) -> tuple[float, float, float, float] | None:
-    """Resolve ``--domain`` input that is a named domain OR four numbers.
+    tokens,
+):
+    """Resolve ``--domain``: four decimal-degree numbers, or nothing.
 
-    Accepts either a single name from ``domains.py`` (for example
-    ``shishaldin``) or four decimal-degree values ``MIN_LON MIN_LAT MAX_LON
-    MAX_LAT``. Returns ``None`` when nothing was supplied.
+    There are no named domains. The area is always the four numbers you give:
+    ``MIN_LON MIN_LAT MAX_LON MAX_LAT``.
     """
     if tokens is None:
         return None
     tokens = list(tokens)
-    if len(tokens) == 1:
-        name = tokens[0]
-        if name in DOMAINS:
-            return validate_bbox(DOMAINS[name])
-        known = ", ".join(sorted(DOMAINS)) or "none defined"
+    if len(tokens) != 4:
         raise ValueError(
-            f"unknown domain '{name}'. Named domains: {known}. "
-            "Or pass four numbers: MIN_LON MIN_LAT MAX_LON MAX_LAT."
+            "--domain expects four numbers: MIN_LON MIN_LAT MAX_LON MAX_LAT."
         )
-    if len(tokens) == 4:
-        return validate_bbox([float(value) for value in tokens])
-    raise ValueError(
-        "--domain expects a single domain name or four numbers "
-        "MIN_LON MIN_LAT MAX_LON MAX_LAT."
-    )
+    return validate_bbox([float(value) for value in tokens])
 
 
 def create_lonlat_area(
@@ -173,10 +157,8 @@ def add_domain_argument(parser: argparse.ArgumentParser) -> None:
         nargs="+",
         metavar="DOMAIN",
         help=(
-            "Named domain from domains.py (for example 'shishaldin'), or four "
-            "decimal-degree values MIN_LON MIN_LAT MAX_LON MAX_LAT (for example "
-            "-166.0 54.0 -162.0 56.0). Use --list-domains to see the names. "
-            "Omit it to keep the full source extent."
+            "Crop in decimal degrees: MIN_LON MIN_LAT MAX_LON MAX_LAT, for "
+            "example -166.0 53.0 -162.0 56.0. Omit it to keep the full extent."
         ),
     )
 
@@ -810,21 +792,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List available composites and exit without creating an image.",
     )
-    parser.add_argument(
-        "--list-domains",
-        action="store_true",
-        help="List the named domains from domains.py and exit.",
-    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-
-    if args.list_domains:
-        print(list_domains())
-        return 0
 
     if not args.sensor:
         parser.error("--sensor is required (choose from goes, viirs).")
