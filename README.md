@@ -208,6 +208,11 @@ conda activate goes-viirs
 │   ├── RGB.md
 │   ├── DOMAINS.md
 │   └── WORKFLOW.md
+├── goestools/                  # read, crop and plot GOES data
+│   ├── __init__.py
+│   ├── dataset.py              # open_dataset(...).image(...)
+│   ├── download.py             # download(...) from the NOAA buckets
+│   └── geolocation.py          # ABI fixed grid <-> lon/lat
 ├── examples/
 │   ├── README.md
 │   ├── day_night.py            # day/night True Color blend

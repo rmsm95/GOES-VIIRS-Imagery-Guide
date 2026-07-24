@@ -24,6 +24,7 @@ data:
   so2_rgb: data/so2_rgb
   glm_abi: data/glm-demo/abi16f      # ABI scan for the GLM example
   glm_flashes: data/glm-demo/glm16   # GLM-L2-LCFA files
+  viirs: data/demo-viirs             # VIIRS SDR bands + geolocation
 
 # ---------------------------------------------------------------------------
 # The scan to fetch when a folder is empty. Nothing is downloaded if your
@@ -58,6 +59,9 @@ products:
   volcanic_emissions:
     composite: volcanic_emissions
     channels: [C09, C10, C11, C13]
+  viirs_true_color:
+    composite: true_color
+    channels: [I01, I02, M03, M04, M05]   # plus the matching geolocation
 
 # ---------------------------------------------------------------------------
 # How the figures look.
