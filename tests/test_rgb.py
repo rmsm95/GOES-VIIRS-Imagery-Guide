@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from goestools.rgb import _aggregate, _stretch, solar_zenith_angle
+from goestools.rgb import _aggregate, _stretch, solar_zenith
 
 
 class StretchTests(TestCase):
@@ -45,17 +45,17 @@ class AggregateTests(TestCase):
 class SolarZenithTests(TestCase):
     def test_local_noon_at_the_equator_is_overhead(self):
         # Equinox, sun over the Greenwich meridian at 12 UTC.
-        zenith = solar_zenith_angle(datetime(2023, 3, 21, 12, 0), 0.0, 0.0)
+        zenith = solar_zenith(datetime(2023, 3, 21, 12, 0), 0.0, 0.0)
 
         self.assertLess(float(zenith), 3.0)
 
     def test_night_side_is_below_the_horizon(self):
-        zenith = solar_zenith_angle(datetime(2023, 3, 21, 12, 0), 180.0, 0.0)
+        zenith = solar_zenith(datetime(2023, 3, 21, 12, 0), 180.0, 0.0)
 
         self.assertGreater(float(zenith), 90.0)
 
     def test_shishaldin_is_dark_at_17_utc(self):
         # 17:00 UTC on 3 October 2023 is before sunrise at the volcano.
-        zenith = solar_zenith_angle(datetime(2023, 10, 3, 17, 0), -163.97, 54.76)
+        zenith = solar_zenith(datetime(2023, 10, 3, 17, 0), -163.97, 54.76)
 
         self.assertGreater(float(zenith), 90.0)

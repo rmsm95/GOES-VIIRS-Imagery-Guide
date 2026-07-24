@@ -1,9 +1,7 @@
-satpy[abi-l1b,generic-image,rayleigh,remote-reading,viirs-sdr]>=0.60,<0.61
-gcsfs>=2025.0
 netCDF4>=1.7
 h5py>=3.12
-pyresample>=1.34
-pillow>=11
-trollimage>=1.27
+numpy>=1.26
+pyyaml>=6.0
 matplotlib>=3.10,<4
 cartopy>=0.25,<0.26
+shapely>=2.0
