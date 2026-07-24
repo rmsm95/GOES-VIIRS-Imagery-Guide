@@ -147,10 +147,14 @@ def read_subset(path, lon_min=None, lon_max=None, lat_min=None, lat_max=None,
 
         x = x[i0:i1:stride]
         y = y[j0:j1:stride]
-        radiance = np.asarray(
-            dataset.variables["Rad"][j0:j1:stride, i0:i1:stride], dtype="float32"
+        # netCDF4 hands back a masked array. Converting it with np.asarray
+        # would keep the fill values as real numbers, and the Planck inversion
+        # would turn those into temperatures of a thousand kelvin, so fill the
+        # masked entries with NaN instead.
+        raw = dataset.variables["Rad"][j0:j1:stride, i0:i1:stride]
+        radiance = np.ma.filled(
+            np.ma.masked_invalid(np.ma.asarray(raw, dtype="float32")), np.nan
         )
-        radiance = np.where(np.isfinite(radiance), radiance, np.nan)
 
         if quantity == "auto":
             quantity = "bt" if (channel or 0) >= 7 else "reflectance"
@@ -180,6 +184,11 @@ def read_subset(path, lon_min=None, lon_max=None, lat_min=None, lat_max=None,
 
     lon, lat = xy_to_lonlat(x, y, gs)
     lon_corners, lat_corners = corner_lonlat(x, y, gs)
+
+    # Pixels that miss the Earth are not observations of anything: the Planck
+    # inversion turns their near-zero radiance into absurd temperatures. Drop
+    # them, so colour limits taken from the data are not thrown off.
+    values = np.where(np.isfinite(lon), values, np.nan)
     return Subset(values, quantity, units, lon, lat, lon_corners, lat_corners,
                   time, channel, projection_extent(x, y, gs),
                   satellite, scene, gs)

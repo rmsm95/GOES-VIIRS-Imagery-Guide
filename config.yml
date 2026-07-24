@@ -35,8 +35,14 @@ products:
     channels: [C13]                # 10.3 um clean infrared window
     parameter: BT                  # BT = brightness temperature, Ref = reflectance
     cmap: gray_r                   # try "gray", "inferno", "viridis"
-    vmin: 200                      # kelvin
-    vmax: 290
+    # Colour limits. Leave null to take them from the data itself; set a number
+    # to fix that end, which is what you want when comparing two scans.
+    vmin: null                     # kelvin, or null for the data minimum
+    vmax: null                     # kelvin, or null for the data maximum
+    # Above the grey scale: colour everything colder than this threshold, the
+    # way forecasters enhance deep convection and ash. null turns it off.
+    enhance_below: 240             # kelvin
+    enhance_cmap: turbo
     colorbar_label: Brightness Temperature (K)
   true_color:
     channels: [C01, C02, C03]      # blue, red, vegetation

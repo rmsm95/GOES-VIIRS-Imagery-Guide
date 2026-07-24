@@ -18,6 +18,7 @@ Nothing is resampled: the pixels are drawn where the satellite saw them, using
 the fixed-grid equations of the GOES-R Product User Guide.
 """
 
+from .colours import data_limits, degree_ticks, enhanced_scale
 from .glm import read_glm_flashes
 from .grid import (
     GridSpec,
@@ -55,6 +56,7 @@ __all__ = [
     "read_viirs", "viirs_true_color", "ViirsSubset",
     # lightning
     "read_glm_flashes",
+    "data_limits", "enhanced_scale", "degree_ticks",
     # the fixed grid
     "GridSpec", "grid_spec", "xy_to_lonlat", "lonlat_to_xy",
     "corner_lonlat", "edges", "viewing_zenith", "clean_mesh",
