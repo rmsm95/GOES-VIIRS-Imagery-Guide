@@ -31,6 +31,7 @@ from .grid import (
     viewing_zenith,
     xy_to_lonlat,
 )
+from .rayleigh import correct_rayleigh, optical_depth, rayleigh_reflectance
 from .read import Subset, channel_of, find_channels, read_subset
 from .viirs import ViirsSubset, read_viirs, viirs_true_color
 from .rgb import (
@@ -49,6 +50,7 @@ __all__ = [
     # composites
     "true_color", "ash", "volcanic_emissions", "Composite",
     "read_channels", "draw_rgb", "solar_zenith",
+    "correct_rayleigh", "rayleigh_reflectance", "optical_depth",
     # VIIRS
     "read_viirs", "viirs_true_color", "ViirsSubset",
     # lightning

@@ -17,7 +17,7 @@ from datetime import datetime
 
 import numpy as np
 
-from .grid import GridSpec, clean_mesh, grid_spec
+from .grid import GridSpec, clean_mesh, grid_spec, viewing_zenith
 from .read import _pixel_window, find_channels, read_subset
 
 
@@ -148,7 +148,7 @@ def _finish(rgb, name, reference):
 
 
 def true_color(files, lon_min=None, lon_max=None, lat_min=None, lat_max=None,
-               gamma=2.2, sun_correction=True, stride=1):
+               gamma=2.2, sun_correction=True, rayleigh=True, stride=1):
     """True Color: real colour, daylight only.
 
     ABI has no green band, so green is synthesised from the blue, red and
@@ -156,22 +156,52 @@ def true_color(files, lon_min=None, lon_max=None, lat_min=None, lat_max=None,
 
         R = C02,  G = 0.45*C02 + 0.10*C03 + 0.45*C01,  B = C01
 
-    With ``sun_correction`` the reflectances are divided by the cosine of the
-    solar zenith angle, which evens out the brightness. No Rayleigh correction
-    is applied, so parts of the disk far from the sub-satellite point look
-    hazier than in an operational product.
+    ``sun_correction`` divides the reflectances by the cosine of the solar
+    zenith angle, evening out the brightness across the scene.
+
+    ``rayleigh`` removes the bluish veil that air molecules scatter into the
+    view. It matters most where the air path is long -- a low sun, or a slant
+    view such as Alaska seen from a satellite over the equator -- and without
+    it those scenes look milky.
     """
     arrays, reference = read_channels(
         files, ["C01", "C02", "C03"], lon_min, lon_max, lat_min, lat_max,
         quantity="reflectance", stride=stride,
     )
     blue, red, veggie = arrays["C01"], arrays["C02"], arrays["C03"]
+    rows, cols = blue.shape
+    lon = reference.lon[:rows, :cols]
+    lat = reference.lat[:rows, :cols]
 
-    if sun_correction and reference.time is not None:
-        zenith = solar_zenith(reference.time,
-                              np.nanmean(reference.lon), np.nanmean(reference.lat))
-        cosine = max(float(np.cos(np.radians(min(float(zenith), 80.0)))), 0.15)
-        blue, red, veggie = blue / cosine, red / cosine, veggie / cosine
+    if reference.time is not None:
+        sun_zenith = solar_zenith(reference.time, lon, lat)
+
+        if sun_correction:
+            # kappa0 gives reflectance already multiplied by the cosine of the
+            # solar zenith angle. Dividing it out gives the true top-of-
+            # atmosphere reflectance, which is what the Rayleigh model below
+            # expects, and evens out the brightness across the scene.
+            cosine = np.clip(np.cos(np.radians(np.clip(sun_zenith, 0.0, 88.0))),
+                             0.05, None)
+            blue, red, veggie = blue / cosine, red / cosine, veggie / cosine
+
+        if rayleigh and sun_correction:
+            from .rayleigh import (
+                CHANNEL_WAVELENGTH, correct_rayleigh, satellite_azimuth,
+                solar_azimuth,
+            )
+
+            view_zenith = viewing_zenith(lon, lat, reference.gs)
+            relative = np.abs(solar_azimuth(reference.time, lon, lat)
+                              - satellite_azimuth(lon, lat, reference.gs.lon_origin))
+            relative = np.where(relative > 180.0, 360.0 - relative, relative)
+
+            blue = correct_rayleigh(blue, CHANNEL_WAVELENGTH["C01"],
+                                    sun_zenith, view_zenith, relative)
+            red = correct_rayleigh(red, CHANNEL_WAVELENGTH["C02"],
+                                   sun_zenith, view_zenith, relative)
+            veggie = correct_rayleigh(veggie, CHANNEL_WAVELENGTH["C03"],
+                                      sun_zenith, view_zenith, relative)
 
     green = 0.45 * red + 0.10 * veggie + 0.45 * blue
     rgb = np.dstack([_stretch(red, 0.0, 1.0, gamma),
@@ -230,5 +260,10 @@ def draw_rgb(ax, composite, **kwargs):
 
     mesh = ax.pcolormesh(lon, lat, placeholder, **kwargs)
     mesh.set_facecolor(rgba)
-    mesh.set_array(None)
+    # Clearing the scalar array is what makes the face colours stick. Cartopy's
+    # collection rejects None, so fall back to leaving it in place there.
+    try:
+        mesh.set_array(None)
+    except AttributeError:
+        pass
     return mesh
