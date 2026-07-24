@@ -1,66 +1,50 @@
 # Configuration used by the notebooks.
 #
-# Edit this file and re-run a notebook: the folders, channels and the look of
-# the figures come from here. Anything set here can still be overridden in the
-# notebook itself, right where it is used.
+# Download your files first with the GOES & JPSS Data Downloader:
+#     https://rmsm95.github.io/GOES-NESDIS_downlaoder/
+# then point the folders below at wherever they landed. Nothing is downloaded
+# by the notebooks.
 #
 # The DOMAIN is deliberately NOT in this file. Every notebook asks you for it
 # directly:
 #
-#     DOMAIN = (min_lon, min_lat, max_lon, max_lat)
+#     DOMAIN = [LonMin, LonMax, LatMin, LatMax]
+#     DOMAIN = None        # no crop: the complete scan
 #
 # so the area you look at is always your own choice, never a preset.
 
 # ---------------------------------------------------------------------------
-# Where the data lives. Paths are relative to the repository root.
-# Point these at your own folders.
+# Where your files are. Paths are relative to the repository root.
+# One folder per product is only a suggestion; they can all be the same folder,
+# since each notebook picks the files it needs by channel.
 # ---------------------------------------------------------------------------
 data:
-  full_disk: data/full_disk_band     # ABI-L1b-RadF files
-  conus: data/conus                  # ABI-L1b-RadC files
-  mesoscale: data/mesoscale          # ABI-L1b-RadM files
-  true_color: data/true_color
-  ash_rgb: data/ash_rgb
-  so2_rgb: data/so2_rgb
-  glm_abi: data/glm-demo/abi16f      # ABI scan for the GLM example
-  glm_flashes: data/glm-demo/glm16   # GLM-L2-LCFA files
-  viirs: data/demo-viirs             # VIIRS SDR bands + geolocation
-
-# ---------------------------------------------------------------------------
-# The scan to fetch when a folder is empty. Nothing is downloaded if your
-# folder already has files.
-# ---------------------------------------------------------------------------
-scene:
-  bucket: noaa-goes18
-  full_disk_time: "2023-10-03 19:00"
-  conus_time: "2023-10-03 19:01"     # the CONUS scan starts one minute later
-  mesoscale_time: "2023-10-03 19:00"
-  glm_bucket: noaa-goes16            # eastern satellite for the storm example
-  glm_time: "2023-10-03 20:00"
-  glm_window_minutes: 10             # how long a window of flashes to draw
+  full_disk: data/full_disk        # ABI-L1b-RadF  (Full Disk)
+  conus: data/conus                # ABI-L1b-RadC  (CONUS)
+  mesoscale: data/mesoscale        # ABI-L1b-RadM  (Mesoscale)
+  glm_abi: data/glm/abi            # the ABI scan under the lightning
+  glm_flashes: data/glm/flashes    # GLM-L2-LCFA
+  viirs: data/viirs                # VIIRS SDR bands + geolocation
 
 # ---------------------------------------------------------------------------
 # What each product needs and how it is scaled.
+# "channels" is what you should download for that product.
 # ---------------------------------------------------------------------------
 products:
   band:
-    band: C13                        # 10.3 um clean infrared window
-    channels: [C13]
-    cmap: gray_r                     # try "gray", "inferno", "viridis"
-    vmin: 200                        # kelvin
+    channels: [C13]                # 10.3 um clean infrared window
+    parameter: BT                  # BT = brightness temperature, Ref = reflectance
+    cmap: gray_r                   # try "gray", "inferno", "viridis"
+    vmin: 200                      # kelvin
     vmax: 290
     colorbar_label: Brightness Temperature (K)
   true_color:
-    composite: true_color
-    channels: [C01, C02, C03]
+    channels: [C01, C02, C03]      # blue, red, vegetation
   ash:
-    composite: ash
     channels: [C11, C13, C14, C15]
   volcanic_emissions:
-    composite: volcanic_emissions
     channels: [C09, C10, C11, C13]
   viirs_true_color:
-    composite: true_color
     channels: [I01, I02, M03, M04, M05]   # plus the matching geolocation
 
 # ---------------------------------------------------------------------------
@@ -69,23 +53,22 @@ products:
 style:
   coast_colour: red
   coast_width: 0.8
-  coast_resolution: "10m"            # "10m", "50m" or "110m"
+  coast_resolution: "10m"          # "10m", "50m" or "110m"
 
   grid_colour: white
   grid_alpha: 0.45
   grid_style: "--"
   grid_width: 0.5
 
-  marker_lon: -163.9711              # Shishaldin; set to null to hide
+  marker_lon: -163.9711            # Shishaldin; set to null to hide
   marker_lat: 54.7554
   marker_colour: red
   marker_size: 10
 
-  flash_colour: yellow               # GLM flashes
+  flash_colour: yellow             # GLM flashes
   flash_size: 14
   flash_edge_width: 0.8
 
-  figure_width: 13.5                 # inches
+  figure_width: 13.5               # inches
   dpi: 160
-  resolution: 0.02                   # degrees per pixel for domain plots
-  overview_pixels: 1200              # size of the complete-scan overview
+  overview_stride: 8               # take every n-th pixel for a whole-scan view

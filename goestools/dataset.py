@@ -36,6 +36,17 @@ class Field:
         self.undimensional = undimensional
 
     @property
+    def start_time(self):
+        """Scan start time, whether time_bounds holds a pair or one instant."""
+        bounds = self.time_bounds
+        if bounds is None:
+            return None
+        try:
+            return bounds[0]
+        except (TypeError, IndexError, KeyError):
+            return bounds
+
+    @property
     def shape(self):
         return np.shape(self.data)
 
