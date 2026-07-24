@@ -29,6 +29,9 @@ DOMAINS: dict[str, tuple[float, float, float, float]] = {
     "shishaldin_wide": (-170.0, 52.0, -158.0, 58.0),   # regional context
     "alaska_peninsula": (-165.0, 54.0, -153.0, 60.0),  # broader peninsula view
     # --- Generic examples --------------------------------------------------
+    "conus_west": (-125.0, 32.0, -115.0, 42.0),        # inside the GOES-18 CONUS sector
+    "mesoscale_example": (-112.0, 10.0, -104.0, 17.0), # inside the Mesoscale 1 sector
+    "plains_storms": (-104.0, 36.0, -97.0, 43.0),      # GLM lightning example (GOES-16)
     "conus": (-125.0, 24.0, -66.0, 50.0),              # continental United States
 }
 

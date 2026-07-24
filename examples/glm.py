@@ -78,6 +78,32 @@ def download_lcfa(bucket: str, keys: list[str], destination: str | Path) -> list
     return paths
 
 
+def abi_scan_keys(bucket: str, product: str, moment: datetime, channels) -> list[str]:
+    """ABI keys for one scan time, for the given channels.
+
+    ``product`` is for example "ABI-L1b-RadF" (Full Disk) or "ABI-L1b-RadC".
+    The scan whose start time falls in the same minute as ``moment`` is used.
+    """
+    prefix = f"{product}/{moment.year}/{moment.timetuple().tm_yday:03d}/{moment:%H}/"
+    url = f"{NOAA_BASE.format(bucket=bucket)}/?list-type=2&prefix={prefix}&max-keys=1000"
+    with urlopen(url, timeout=60) as response:
+        body = response.read().decode("utf-8", "replace")
+    keys = KEY_PATTERN.findall(body)
+    stamp = f"_s{moment.year}{moment.timetuple().tm_yday:03d}{moment:%H%M}"
+    wanted = []
+    for channel in channels:
+        for key in keys:
+            if f"{channel}_" in key and stamp in key:
+                wanted.append(key)
+                break
+    return wanted
+
+
+def download_abi(bucket: str, keys: list[str], destination: str | Path) -> list[str]:
+    """Download ABI files, reusing anything already present."""
+    return download_lcfa(bucket, keys, destination)
+
+
 def read_flashes(files, bbox=None):
     """Flash longitudes and latitudes from LCFA files, optionally clipped to a box.
 

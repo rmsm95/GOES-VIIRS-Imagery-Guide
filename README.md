@@ -63,10 +63,10 @@ decimal degrees:
 The named domains are only **examples**. Open `examples/domains.py` to add or
 change boxes for your own study areas.
 
-Add `--native-projection` to keep the GOES (geostationary) projection — the
-satellite's own projection, with longitude/latitude drawn as reference
-gridlines. This is what the notebooks use for GOES. Without it, the crop is
-placed on a flat WGS84 lon/lat grid. See
+Cropped output is placed on a regular lon/lat grid and drawn as a plain
+rectangular map: degree ticks, a graticule, coastlines, and the scan time in the
+header. Add `--native-projection` only if you want the satellite's own
+geostationary frame instead. See
 [Choosing source coverage and a domain](docs/DOMAINS.md).
 
 To render the entire extent of the downloaded GOES file, omit `--domain`. For a true Full Disk image, the input files themselves must be ABI `F` products such as `ABI-L1b-RadF`.
@@ -170,11 +170,14 @@ Demo downloads can be several hundred megabytes. Files are stored under `data/de
 The notebooks are executed examples that keep the explanation, editable code,
 and the exact resulting satellite image together:
 
-- [GOES ABI True Color notebook](notebooks/01_GOES_true_color.ipynb)
-- [VIIRS True Color notebook](notebooks/02_VIIRS_true_color.ipynb)
-- [GOES-18 Ash RGB notebook](notebooks/03_GOES_ash_rgb.ipynb)
-- [GOES-18 SO₂ / Volcanic Emissions RGB notebook](notebooks/04_GOES_so2_rgb.ipynb)
-- [GOES-18 Day/Night True Color notebook](notebooks/05_GOES_day_night.ipynb)
+- [Full Disk, one band (10.3 µm)](notebooks/01_full_disk_band.ipynb)
+- [CONUS sector](notebooks/02_conus.ipynb)
+- [Mesoscale sector](notebooks/03_mesoscale.ipynb)
+- [True Color](notebooks/04_true_color.ipynb)
+- [Ash RGB](notebooks/05_ash_rgb.ipynb)
+- [SO₂ / Volcanic Emissions RGB](notebooks/06_so2_rgb.ipynb)
+- [GLM lightning over True Color](notebooks/07_glm_true_color.ipynb)
+- [VIIRS True Color](notebooks/08_viirs_true_color.ipynb)
 - [JupyterLab setup and input guide](notebooks/README.md)
 
 Install and start JupyterLab from the repository root:
@@ -185,12 +188,17 @@ python -m jupyter lab
 ```
 
 GitHub displays every saved result without requiring JupyterLab. Each notebook
-is simple: it produces **one image** and embeds it, keeping the recipe, the
-named domain, the code, and the exact PNG together. The GOES notebooks use
-public GOES-18 data from **3 October 2023 at 19:00 UTC** (and 17:00 UTC for the
-night side of the day/night notebook), cropped to the `shishaldin` named domain
-and kept in the **GOES geostationary projection**. The VIIRS notebook renders a
-complete Suomi NPP demonstration granule (not Shishaldin — see the notebook).
+follows the same four steps: get the data from a folder, plot the **complete**
+product, choose a **domain**, then plot that domain. The GOES notebooks use
+public GOES-18 data from **3 October 2023 at 19:00 UTC**; the GLM notebook uses
+GOES-16 at 20:00 UTC over a line of thunderstorms in the central United States.
+
+The whole stack is pinned in [`environment.yml`](environment.yml):
+
+```bash
+conda env create -f environment.yml
+conda activate goes-viirs
+```
 
 ## Repository structure
 
@@ -206,19 +214,24 @@ complete Suomi NPP demonstration granule (not Shishaldin — see the notebook).
 │   ├── demo_goes_true_color.py
 │   ├── demo_viirs_true_color.py
 │   ├── domains.py              # named, editable geographic domains
+│   ├── glm.py                  # GLM lightning flashes
 │   ├── goes18_coverage_data.py
 │   └── render_satellite.py
 ├── notebooks/
 │   ├── README.md
-│   ├── 01_GOES_true_color.ipynb
-│   ├── 02_VIIRS_true_color.ipynb
-│   ├── 03_GOES_ash_rgb.ipynb
-│   ├── 04_GOES_so2_rgb.ipynb
-│   └── 05_GOES_day_night.ipynb
+│   ├── 01_full_disk_band.ipynb
+│   ├── 02_conus.ipynb
+│   ├── 03_mesoscale.ipynb
+│   ├── 04_true_color.ipynb
+│   ├── 05_ash_rgb.ipynb
+│   ├── 06_so2_rgb.ipynb
+│   ├── 07_glm_true_color.ipynb
+│   └── 08_viirs_true_color.ipynb
 ├── tests/
 │   ├── test_goes18_coverage_data.py
 │   ├── test_notebooks.py
 │   └── test_render_satellite.py
+├── environment.yml
 ├── requirements-notebooks.txt
 └── requirements.txt
 ```

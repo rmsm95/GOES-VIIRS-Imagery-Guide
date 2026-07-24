@@ -1,74 +1,61 @@
 # JupyterLab tutorials
 
-These notebooks are executed examples. GitHub shows the code and the exact
-satellite image produced by the cells in the same document:
+Executed examples: GitHub shows the code and the exact image produced by it in
+the same document.
 
-- [`01_GOES_true_color.ipynb`](01_GOES_true_color.ipynb): GOES ABI True Color;
-- [`02_VIIRS_true_color.ipynb`](02_VIIRS_true_color.ipynb): JPSS VIIRS True Color;
-- [`03_GOES_ash_rgb.ipynb`](03_GOES_ash_rgb.ipynb): GOES-18 ABI Ash RGB;
-- [`04_GOES_so2_rgb.ipynb`](04_GOES_so2_rgb.ipynb): GOES-18 ABI SO₂ /
-  Volcanic Emissions RGB;
-- [`05_GOES_day_night.ipynb`](05_GOES_day_night.ipynb): GOES-18 ABI Day/Night
-  True Color — real color by day, clouds from C13 at night.
+Every notebook follows the same four steps:
 
-## Start JupyterLab
+1. **Get the data** — which folder the files are in, and download what is
+   missing from the public NOAA bucket;
+2. **Plot the complete product** — the whole Full Disk, CONUS or Mesoscale scan;
+3. **Choose a domain** — a named box from
+   [`examples/domains.py`](../examples/domains.py), or your own four numbers;
+4. **Plot that domain** — cropped, on a regular lon/lat grid with coastlines,
+   graticule and (for single bands) a colour bar.
 
-From the repository root:
+## The notebooks
+
+| Notebook | What it shows |
+|---|---|
+| [`01_full_disk_band.ipynb`](01_full_disk_band.ipynb) | Full Disk, one band (`C13`, 10.3 µm) in grey scale, then a domain with a colour bar |
+| [`02_conus.ipynb`](02_conus.ipynb) | The CONUS sector: full extent, then a domain inside it |
+| [`03_mesoscale.ipynb`](03_mesoscale.ipynb) | The Mesoscale 1 sector: full extent, then a domain inside it |
+| [`04_true_color.ipynb`](04_true_color.ipynb) | True Color from the Full Disk, then the Shishaldin domain |
+| [`05_ash_rgb.ipynb`](05_ash_rgb.ipynb) | Ash RGB from the Full Disk, then the Shishaldin domain |
+| [`06_so2_rgb.ipynb`](06_so2_rgb.ipynb) | SO₂ / Volcanic Emissions RGB, same order |
+| [`07_glm_true_color.ipynb`](07_glm_true_color.ipynb) | GLM lightning flashes drawn over a True Color image |
+| [`08_viirs_true_color.ipynb`](08_viirs_true_color.ipynb) | A complete Suomi NPP VIIRS granule (not Shishaldin — see the notebook) |
+
+## Environment
+
+Create the environment once from
+[`environment.yml`](../environment.yml) at the repository root:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements-notebooks.txt
+conda env create -f environment.yml
+conda activate goes-viirs
 python -m jupyter lab
 ```
 
-On Windows PowerShell, activate the environment with:
+Then open the `notebooks` directory and run the cells top to bottom.
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
+## Data
 
-Open the `notebooks` directory in JupyterLab and run every cell from top to
-bottom.
+The GOES notebooks use GOES-18 ABI from **3 October 2023, 19:00 UTC** (the
+nearest CONUS scan is 19:01 UTC). `download_coverage()` fetches only the files
+that are missing, so re-running costs nothing.
 
-## What each notebook produces
+The GLM notebook uses GOES-16 for **3 October 2023, 20:00 UTC**, over a line of
+afternoon thunderstorms in the central United States, because that is where the
+lightning is and there is daylight for True Color.
 
-Each notebook is deliberately simple: it produces **one image** over Shishaldin
-and embeds it, so GitHub shows the code and the exact result together.
+Which coverage contains what, on this date:
 
-- The four GOES notebooks download the GOES-18 ABI Full Disk channels they need
-  from the 3 October 2023 19:00 UTC scan (17:00 UTC as well for the night side
-  of the day/night notebook), build the composite, crop to the **Shishaldin**
-  domain, and save one image.
-- The VIIRS notebook downloads one Suomi NPP granule with the I/M bands and
-  geolocation and renders one image over the granule.
+- **Full Disk** is the only product that covers Shishaldin, so the volcano
+  domains come from it;
+- **CONUS** for GOES-18 covers the western United States and does not reach
+  Alaska;
+- **Mesoscale 1** is a small sector, at this time off western Mexico.
 
-The GOES images keep the **GOES (geostationary) projection** — the satellite's
-own projection, with longitude/latitude drawn as reference gridlines rather than
-reprojected. Away from the sub-satellite point (as over Alaska) that frame is
-slightly tilted, which is expected. VIIRS is an orbital swath with no fixed
-projection, so it is placed on a regular lon/lat grid.
-
-Every image includes a longitude/latitude grid and Natural Earth coastlines. The
-PNG is embedded in the notebook, so it is visible on GitHub without running
-JupyterLab.
-
-## Use your own domain
-
-The GOES notebooks pick a named domain from
-[`examples/domains.py`](../examples/domains.py):
-
-```python
-DOMAIN_NAME = "shishaldin"
-DOMAIN = DOMAINS[DOMAIN_NAME]
-```
-
-Change `DOMAIN_NAME` to any name listed by
-`python examples/render_satellite.py --list-domains`, or set `DOMAIN` directly to
-your own `(MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)` box in decimal degrees. The same
-names work on the command line, for example `--domain shishaldin`.
-
-The first mapped output may download 10 m Natural Earth coastlines to
-`output/.cartopy/`. Both `data/` and `output/` are excluded from Git; the
-executed PNG remains embedded in the notebook.
+Both `data/` and `output/` are excluded from Git; the executed PNG stays
+embedded in the notebook.
