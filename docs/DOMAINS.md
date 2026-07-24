@@ -53,29 +53,18 @@ python examples/render_satellite.py \
 
 A CONUS or Mesoscale file cannot be converted into Full Disk.
 
-Each source can still have its own independent user-defined domain. For
-example, the notebooks use a `DOMAINS` dictionary:
+Each source needs a domain that falls inside what it actually observed. On
+3 October 2023 the GOES-18 CONUS sector stops short of Alaska and Mesoscale 1
+sits off western Mexico, so a Shishaldin box can only come from the Full Disk.
 
-```python
-DOMAINS = {
-    "full_disk": (-165.97, 52.76, -161.97, 56.76),
-    "conus": (-125.0, 32.0, -115.0, 42.0),
-    "mesoscale": (-112.0, 10.0, -104.0, 17.0),
-}
-```
-
-The Full Disk box is centered on Shishaldin. The CONUS and Mesoscale boxes are
-separate examples inside their own source extents. They cannot be centered on
-Shishaldin when those source products do not cover Alaska.
-
-To crop a GOES source to the user-defined Shishaldin example:
+To crop a GOES source to a box around Shishaldin:
 
 ```bash
 python examples/render_satellite.py \
   --sensor goes \
   --files "data/goes/*.nc" \
   --composite true_color \
-  --domain -166.0 54.0 -162.0 56.0 \
+  --domain -166.0 53.0 -162.0 56.0 \
   --output output/goes_shishaldin.png
 ```
 
