@@ -532,14 +532,17 @@ def scene_time_label(scene, composite: str) -> str:
 
 
 def save_map(scene, composite: str, output, *, title=None, time_label=None,
-             image=None) -> Path:
+             image=None, points=None, points_label=None,
+             mark_shishaldin: bool = True) -> Path:
     """Save a map, choosing the plain lon/lat style or the projected style."""
     area = scene[composite].attrs.get("area")
     if time_label is None:
         time_label = scene_time_label(scene, composite)
     if area is not None and area.crs.is_geographic:
         return save_lonlat_map(
-            scene, composite, output, title=title, time_label=time_label, image=image
+            scene, composite, output, title=title, time_label=time_label,
+            image=image, points=points, points_label=points_label,
+            mark_shishaldin=mark_shishaldin,
         )
     return save_dataset_with_lonlat_grid(
         scene, composite, output, title=title, image=image

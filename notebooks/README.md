@@ -1,35 +1,51 @@
 # JupyterLab tutorials
 
-Executed examples: GitHub shows the code and the exact image produced by it in
-the same document.
+Executed examples. GitHub shows the code and the exact image it produced in the
+same document.
 
-Every notebook follows the same four steps:
+**Every notebook is self-contained.** The folder you read from, the domain you
+choose, and the whole plotting code are written out in the notebook itself —
+nothing important is hidden in a library, so you can change any of it and re-run.
 
-1. **Get the data** — which folder the files are in, and download what is
-   missing from the public NOAA bucket;
-2. **Plot the complete product** — the whole Full Disk, CONUS or Mesoscale scan;
-3. **Choose a domain** — a named box from
-   [`examples/domains.py`](../examples/domains.py), or your own four numbers;
-4. **Plot that domain** — cropped, on a regular lon/lat grid with coastlines,
-   graticule and (for single bands) a colour bar.
+Each one follows the same four steps:
+
+1. **Your files** — point `DATA_DIR` at the folder holding your NetCDF files.
+   (If the folder is empty a small block downloads the example scan so the
+   notebook still runs; delete it once you use your own data.)
+2. **Plot the complete scan** — the whole Full Disk, CONUS or Mesoscale product.
+3. **Your domain** — you type the four numbers:
+   `DOMAIN = (min_lon, min_lat, max_lon, max_lat)`.
+4. **Plot that domain** — the full drawing code: resampling to a lon/lat grid,
+   coastlines, graticule, tick labels, marker and colour bar.
+
+A `STYLE` cell near the top collects the things you are most likely to change:
+
+```python
+COAST_COLOUR = "red"        # coastline colour
+COAST_WIDTH = 0.8
+COAST_RES = "10m"           # "10m", "50m" or "110m"
+GRID_COLOUR = "white"       # graticule
+GRID_ALPHA = 0.45
+GRID_STYLE = "--"
+MARKER_LON, MARKER_LAT = -163.9711, 54.7554   # None to hide
+FIG_WIDTH = 13.5
+DPI = 160
+```
 
 ## The notebooks
 
 | Notebook | What it shows |
 |---|---|
-| [`01_full_disk_band.ipynb`](01_full_disk_band.ipynb) | Full Disk, one band (`C13`, 10.3 µm) in grey scale, then a domain with a colour bar |
-| [`02_conus.ipynb`](02_conus.ipynb) | The CONUS sector: full extent, then a domain inside it |
-| [`03_mesoscale.ipynb`](03_mesoscale.ipynb) | The Mesoscale 1 sector: full extent, then a domain inside it |
-| [`04_true_color.ipynb`](04_true_color.ipynb) | True Color from the Full Disk, then the Shishaldin domain |
-| [`05_ash_rgb.ipynb`](05_ash_rgb.ipynb) | Ash RGB from the Full Disk, then the Shishaldin domain |
+| [`01_full_disk_band.ipynb`](01_full_disk_band.ipynb) | Full Disk, one band (`C13`, 10.3 µm), then a domain with a colour bar |
+| [`02_conus.ipynb`](02_conus.ipynb) | CONUS sector: full extent, then a domain inside it |
+| [`03_mesoscale.ipynb`](03_mesoscale.ipynb) | Mesoscale 1 sector: full extent, then a domain inside it |
+| [`04_true_color.ipynb`](04_true_color.ipynb) | True Color: whole Full Disk, then the Shishaldin domain |
+| [`05_ash_rgb.ipynb`](05_ash_rgb.ipynb) | Ash RGB, same order |
 | [`06_so2_rgb.ipynb`](06_so2_rgb.ipynb) | SO₂ / Volcanic Emissions RGB, same order |
-| [`07_glm_true_color.ipynb`](07_glm_true_color.ipynb) | GLM lightning flashes drawn over a True Color image |
-| [`08_viirs_true_color.ipynb`](08_viirs_true_color.ipynb) | A complete Suomi NPP VIIRS granule (not Shishaldin — see the notebook) |
+| [`07_glm_true_color.ipynb`](07_glm_true_color.ipynb) | GLM lightning flashes drawn over True Color |
+| [`08_viirs_true_color.ipynb`](08_viirs_true_color.ipynb) | A complete VIIRS granule (not Shishaldin — see the notebook) |
 
 ## Environment
-
-Create the environment once from
-[`environment.yml`](../environment.yml) at the repository root:
 
 ```bash
 conda env create -f environment.yml
@@ -37,25 +53,17 @@ conda activate goes-viirs
 python -m jupyter lab
 ```
 
-Then open the `notebooks` directory and run the cells top to bottom.
+## Data used by the examples
 
-## Data
+GOES-18 ABI, 3 October 2023: Full Disk and Mesoscale 1 at 19:00 UTC, the nearest
+CONUS scan at 19:01 UTC. The GLM notebook uses GOES-16 at 20:00 UTC over
+thunderstorms in the central United States, where there is both lightning and
+daylight.
 
-The GOES notebooks use GOES-18 ABI from **3 October 2023, 19:00 UTC** (the
-nearest CONUS scan is 19:01 UTC). `download_coverage()` fetches only the files
-that are missing, so re-running costs nothing.
-
-The GLM notebook uses GOES-16 for **3 October 2023, 20:00 UTC**, over a line of
-afternoon thunderstorms in the central United States, because that is where the
-lightning is and there is daylight for True Color.
-
-Which coverage contains what, on this date:
-
-- **Full Disk** is the only product that covers Shishaldin, so the volcano
-  domains come from it;
-- **CONUS** for GOES-18 covers the western United States and does not reach
-  Alaska;
-- **Mesoscale 1** is a small sector, at this time off western Mexico.
+On that date the **Full Disk is the only product that covers Shishaldin**: the
+GOES-18 CONUS sector stops short of Alaska and Mesoscale 1 sits off western
+Mexico. The CONUS and Mesoscale notebooks therefore use a domain inside their
+own coverage.
 
 Both `data/` and `output/` are excluded from Git; the executed PNG stays
 embedded in the notebook.
